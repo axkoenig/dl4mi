@@ -2,6 +2,7 @@
 *.texpadtmp*
 .vscode 
 .DS_Store
+*.pth
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
