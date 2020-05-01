@@ -1,0 +1,70 @@
+% SETUP
+\documentclass{article}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tabularx}
+\usepackage[none]{hyphenat}
+\usepackage{multicol}
+\usepackage{hhline}
+\usepackage{biblatex}
+\addbibresource{references.bib}
+\geometry{
+	a4paper, 
+	total={170mm,257mm}, 
+	left=25mm, 
+	right=25mm,
+	top=30mm, 
+	bottom=30mm}
+
+% SECTION TITLE FORMAT
+\titleformat{\section}
+  {\normalfont\bfseries}{\thesection}{1em}{}[{\titlerule[0.3pt]}]
+
+% HEADER & FOOTER
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0pt}
+\chead{\large Project Proposal: Deep Learning in Medical Imaging}
+\lhead{}
+\rhead{}
+\cfoot{}
+
+\begin{document}
+
+% CONTACT
+\begin{table}[!h]
+\center
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Name}             & \textbf{Student ID} & \textbf{E-Mail}            \\ \hhline{|=|=|=|}
+Li Nguyen        & 934644485  & li.nguyen@tum.de  \\ \hline
+Alexander Koenig & 918254061  & awc.koenig@tum.de \\ \hline
+\end{tabular}
+\end{table}
+
+\begin{multicols}{2}
+
+\section{Paper}
+In our project we would like to improve the recently presented paper in \cite{wang2020covid}, which proposes a CNN that aims to diagnose COVID19 infections by detecting abnormalities in chest radiography images. Since in this ongoing crisis traditional test capacities are limited in many countries, diagnosing with radiographies can help to accelerate testing. As agreed, we are presenting the same paper in the seminar to shed light on its existing challenges. 
+
+\section{Problem}
+COVID-Net classifies thorax radiographs into the three categories "normal", "non-COVID19 pneuomia" and "COVID19 pneumonia". The issue with diagnosing COVID19 infections is that there is a lack of COVID19 infection data. There are a lot of images for healthy lungs and lungs with non-COVID pneumonia. However, due to the very recent emergence of this disease data for COVID19 is rare. Hence, the lack of COVID19 data leads to worse sensitivity for the COVID19 infection category (95\%, 91\% and 80\% respectively).
+
+\section{Datasets}
+Wang and Wong use their new dataset called COVIDx which holds 16.756 chest radiography images from 13.645 patients. It is comprised of two datasets: the COVID-19 Image Data Collection \cite{cohen2020covid} and the RSNA Pneumonia Detection Challenge dataset \cite{RSNA}. In total there are 8066 "normal", 5526 "non-COVID pneumonia" and only 53 "COVID-19 pneumonia" patient cases. Their code and the COVIDx dataset is publicly available.
+
+\section{Methods}
+We would like to address this problem in two ways. Firstly, we would like to train the existing implementation of COVID-Net with a cosine loss function as it recently proved to perform especially well on small datasets  \cite{barz2019deep}. We refer to this improved network as COVID-Net++. Secondly and independently from the first approach, we aim to generate new training data for the original COVID-Net by means of a GAN. We are especially interested in a recent publication \cite{noguchi2019image} which presents a new concept to fine-tune a pre-trained generator with a small data set by learning scale and shift parameters of hidden layers. To pre-train the generator we would like to use the RSNA Pneumonia Detection Challenge dataset or even non-thorax radiographs. We would then fine-tune the generator with the COVID-19 Image Data Collection \cite{cohen2020covid} to implement a transfer learning approach. We aim to train COVID-Net with these synthetically generated radiographs. An implementation of \cite{noguchi2019image} is publicly available and the cosine similarity loss is shipped with PyTorch.
+
+\section{Evaluation}
+
+Throughout all our tests we want to use the same performance measures as proposed by Wang and Wong \cite{wang2020covid} to assure comparability. Namely, these are test accuracy, sensitivity and positive predictive value (PPV) for each infection type. In the first step we want to asses the effect of the cosine similarity by comparing results of our COVID-Net++ with the original COVID-Net. In the second stage, after training COVID-Net with synthetically generated training data we would compare the results with the original COVID-Net. As the cosine loss performs especially well for small datasets a network trained with synthesized data and cosine loss could lead to worse results. However, it would also be interesting to scrutinize.
+
+\section{Innovation}
+
+Our project aims at helping the fight against COVID19 and tries to face the problem of training data shortage due to the recent emergence of this infectios disease. By leveraging most recent publications in a combination with the COVID-Net we expect the network to perform better and help the diagnosis of COVID19 infections. As COVID-Net is still in a research stage and not yet production-ready we like to support and accelerate the research in this relevant area.
+
+\end{multicols}
+\printbibliography
+
+\end{document}
