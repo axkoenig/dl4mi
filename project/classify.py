@@ -7,17 +7,56 @@ import torch.nn.functional as F
 from pytorch_lightning import Trainer, loggers
 from torchsummary import summary
 
+from autoencoder import HealhtyAE
+
 # normalization constants
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 STD = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 
+# other constants
+AE_PATH = './healthy_ae.pth'
+
 class Classifier(pl.LightningModule):
-    def __init__(self, hparams):
+    def __init__(self, hparams, autoencoder):
         super().__init__()
         self.hparams = hparams
-            
+        self.autoencoder = autoencoder
+
+        self.classifier = nn.Sequential(
+            # input (nc) x 256 x 256
+            nn.Conv2d(self.hparams.nc, self.nf, 4, 2, 1),
+            nn.BatchNorm2d(self.nf),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.MaxPool2d(2),
+
+            # input (depth) x 64 x 64
+            nn.Conv2d(self.nf, self.nf*2, 4, 2, 1),
+            nn.BatchNorm2d(self.nf*2),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.MaxPool2d(2), 
+
+            # input (depth*2) x 16 x 16
+            nn.Conv2d(self.nf*2, self.nf*4, 4, 2, 1),
+            nn.BatchNorm2d(self.nf*4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.MaxPool2d(2),
+
+            # input (depth*4) x 4 x 4
+            nn.Flatten(),
+            nn.Linear(self.nf*4*4, self.nf*4*4, bias=True),
+            nn.Linear(self.nf*4*4, self.nf*4*4, bias=True),
+            nn.Linear(self.nf*4*4, 3, bias=True),
+            nn.Softmax(),
+        )
+
     def forward(self,x):
-        return x
+        # create anomaly map 
+        decoded = self.autoencoder(x)
+        anomaly = x - decoded
+
+        # classify anomaly map
+        pred = self.classifier(anomaly)
+        return pred
 
     def prepare_data(self):
         
@@ -40,10 +79,10 @@ class Classifier(pl.LightningModule):
         return DataLoader(self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=self.hparams.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=self.hparams.num_workers)
+        return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
 
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=self.hparams.num_workers)
+        return DataLoader(self.test_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2))
@@ -106,6 +145,12 @@ class Classifier(pl.LightningModule):
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, prefix="classifier")
 
+    # load pretrained autoencoder
+    autoencoder = HealhtyAE()
+    autoencoder.load_state_dict(torch.load(AE_PATH))
+    autoencoder.eval()
+    
+    # create classifier
     model = Classifier(hparams)
 
     # print detailed summary with estimated network size
@@ -121,13 +166,11 @@ if __name__ == "__main__":
     parser.add_argument("--data_root", type=str, default="./data", help="Data root directory")
     parser.add_argument("--log_dir", type=str, default="./logs", help="Logging directory")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
-    parser.add_argument("--image_size", type=int, default=128, help="Spatial size of training images")
+    parser.add_argument("--image_size", type=int, default=256, help="Spatial size of training images")
     parser.add_argument("--max_epochs", type=int, default=8, help="Number of maximum training epochs")
-    parser.add_argument("--batch_size", type=int, default=32, help="Batch size during training")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
     parser.add_argument("--nc", type=int, default=3, help="Number of channels in the training images")
-    parser.add_argument("--nz", type=int, default=256, help="Size of latent vector z")
-    parser.add_argument("--nfe", type=int, default=64, help="Size of feature maps in encoder")
-    parser.add_argument("--nfd", type=int, default=64, help="Size of feature maps in decoder")
+    parser.add_argument("--nf", type=int, default=16, help="Number of feature maps in classifier")
     parser.add_argument("--lr", type=float, default=0.0002, help="Learning rate for optimizer")
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
