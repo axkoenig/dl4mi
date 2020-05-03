@@ -1,3 +1,7 @@
+import pytorch_lightning as pl
+import torch
+import torch.nn as nn
+
 nc = 3                    # Number of channels in the training images
 nz = 512                  # Size of z latent vector (size of generator input)
 nfe = 32                  # Size of feature maps in generator

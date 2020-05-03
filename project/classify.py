@@ -4,8 +4,12 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.transforms as transforms
 from pytorch_lightning import Trainer, loggers
+from torch.optim import Adam
+from torch.utils.data import DataLoader, Subset
 from torchsummary import summary
+from torchvision.datasets import ImageFolder
 
 from autoencoder import HealhtyAE
 
@@ -24,28 +28,30 @@ class Classifier(pl.LightningModule):
 
         self.classifier = nn.Sequential(
             # input (nc) x 256 x 256
-            nn.Conv2d(self.hparams.nc, self.nf, 4, 2, 1),
-            nn.BatchNorm2d(self.nf),
+            nn.Conv2d(self.hparams.nc, self.hparams.nf, 4, 2, 1),
+            nn.BatchNorm2d(self.hparams.nf),
             nn.LeakyReLU(0.2, inplace=True),
             nn.MaxPool2d(2),
 
-            # input (depth) x 64 x 64
-            nn.Conv2d(self.nf, self.nf*2, 4, 2, 1),
-            nn.BatchNorm2d(self.nf*2),
+            # input (nf) x 64 x 64
+            nn.Conv2d(self.hparams.nf, self.hparams.nf*2, 4, 2, 1),
+            nn.BatchNorm2d(self.hparams.nf*2),
             nn.LeakyReLU(0.2, inplace=True),
             nn.MaxPool2d(2), 
 
-            # input (depth*2) x 16 x 16
-            nn.Conv2d(self.nf*2, self.nf*4, 4, 2, 1),
-            nn.BatchNorm2d(self.nf*4),
+            # input (nf*2) x 16 x 16
+            nn.Conv2d(self.hparams.nf*2, self.hparams.nf*4, 4, 2, 1),
+            nn.BatchNorm2d(self.hparams.nf*4),
             nn.LeakyReLU(0.2, inplace=True),
             nn.MaxPool2d(2),
 
-            # input (depth*4) x 4 x 4
+            # input (nf*4) x 4 x 4
             nn.Flatten(),
-            nn.Linear(self.nf*4*4, self.nf*4*4, bias=True),
-            nn.Linear(self.nf*4*4, self.nf*4*4, bias=True),
-            nn.Linear(self.nf*4*4, 3, bias=True),
+            nn.Linear(self.hparams.nf*4*(self.hparams.image_size//64)**2, self.hparams.nf*4*(self.hparams.image_size//64)**2, bias=True),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(self.hparams.nf*4*(self.hparams.image_size//64)**2, self.hparams.nf*4*(self.hparams.image_size//64)**2, bias=True),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(self.hparams.nf*4*(self.hparams.image_size//64)**2, 3, bias=True),
             nn.Softmax(),
         )
 
@@ -53,9 +59,13 @@ class Classifier(pl.LightningModule):
         # create anomaly map 
         decoded = self.autoencoder(x)
         anomaly = x - decoded
+        print(decoded.shape)
+        print(anomaly.shape)
+        print(x.shape)
 
         # classify anomaly map
         pred = self.classifier(anomaly)
+        print(pred.shape)
         return pred
 
     def prepare_data(self):
@@ -66,14 +76,14 @@ class Classifier(pl.LightningModule):
                                         transforms.Normalize(MEAN.tolist(), STD.tolist()),
                                         ])
         
-        dataset = ImageFolder(root=self.data_root + "/train", transform=transform)
+        dataset = ImageFolder(root=self.hparams.data_root + "/train", transform=transform)
 
         # split train and val
         end_train_idx = 7080
 
         self.train_dataset = Subset(dataset, range(0, end_train_idx))
         self.val_dataset = Subset(dataset, range(end_train_idx+1, len(dataset)))
-        self.test_dataset = ImageFolder(root=self.data_root + "/test", transform=transform)
+        self.test_dataset = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=self.hparams.num_workers)
@@ -151,7 +161,7 @@ def main(hparams):
     autoencoder.eval()
     
     # create classifier
-    model = Classifier(hparams)
+    model = Classifier(hparams, autoencoder)
 
     # print detailed summary with estimated network size
     summary(model, (hparams.nc, hparams.image_size, hparams.image_size), device="cpu")
@@ -174,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.0002, help="Learning rate for optimizer")
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
-    parser.add_argument("--gpus", type=int, default=2, help="Number of GPUs. Use 0 for CPU mode")
+    parser.add_argument("--gpus", type=int, default=0, help="Number of GPUs. Use 0 for CPU mode")
 
     args = parser.parse_args()
     main(args)
