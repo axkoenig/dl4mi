@@ -18,7 +18,8 @@ MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 STD = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 
 # other constants
-AE_PATH = './healthy_ae.pth'
+AE_PATH = "./healthy_ae.pth"
+
 
 class Classifier(pl.LightningModule):
     def __init__(self, hparams, autoencoder):
@@ -26,76 +27,88 @@ class Classifier(pl.LightningModule):
         self.hparams = hparams
         self.autoencoder = autoencoder
 
+        # number of neurons in last dense layers
+        self.nd = self.hparams.nf * 4 * (self.hparams.image_size // 64) ** 2
+
         self.classifier = nn.Sequential(
             # input (nc) x 256 x 256
             nn.Conv2d(self.hparams.nc, self.hparams.nf, 4, 2, 1),
             nn.BatchNorm2d(self.hparams.nf),
             nn.LeakyReLU(0.2, inplace=True),
             nn.MaxPool2d(2),
-
             # input (nf) x 64 x 64
-            nn.Conv2d(self.hparams.nf, self.hparams.nf*2, 4, 2, 1),
-            nn.BatchNorm2d(self.hparams.nf*2),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.MaxPool2d(2), 
-
-            # input (nf*2) x 16 x 16
-            nn.Conv2d(self.hparams.nf*2, self.hparams.nf*4, 4, 2, 1),
-            nn.BatchNorm2d(self.hparams.nf*4),
+            nn.Conv2d(self.hparams.nf, self.hparams.nf * 2, 4, 2, 1),
+            nn.BatchNorm2d(self.hparams.nf * 2),
             nn.LeakyReLU(0.2, inplace=True),
             nn.MaxPool2d(2),
-
+            # input (nf*2) x 16 x 16
+            nn.Conv2d(self.hparams.nf * 2, self.hparams.nf * 4, 4, 2, 1),
+            nn.BatchNorm2d(self.hparams.nf * 4),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.MaxPool2d(2),
             # input (nf*4) x 4 x 4
             nn.Flatten(),
-            nn.Linear(self.hparams.nf*4*(self.hparams.image_size//64)**2, self.hparams.nf*4*(self.hparams.image_size//64)**2, bias=True),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(self.hparams.nf*4*(self.hparams.image_size//64)**2, self.hparams.nf*4*(self.hparams.image_size//64)**2, bias=True),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(self.hparams.nf*4*(self.hparams.image_size//64)**2, 3, bias=True),
+            nn.Linear(self.nd, self.nd, bias=True),
+            nn.Linear(self.nd, self.nd, bias=True),
+            nn.Linear(self.nd, 3, bias=True),
             nn.Softmax(),
         )
 
-    def forward(self,x):
-        # create anomaly map 
+    def forward(self, x):
+        # create anomaly map
         decoded = self.autoencoder(x)
         anomaly = x - decoded
-        print(decoded.shape)
-        print(anomaly.shape)
-        print(x.shape)
 
         # classify anomaly map
         pred = self.classifier(anomaly)
-        print(pred.shape)
         return pred
 
     def prepare_data(self):
-        
-        transform = transforms.Compose([transforms.Resize(self.hparams.image_size), 
-                                        transforms.CenterCrop(self.hparams.image_size),
-                                        transforms.ToTensor(),
-                                        transforms.Normalize(MEAN.tolist(), STD.tolist()),
-                                        ])
-        
+
+        transform = transforms.Compose(
+            [
+                transforms.Resize(self.hparams.image_size),
+                transforms.CenterCrop(self.hparams.image_size),
+                transforms.ToTensor(),
+                transforms.Normalize(MEAN.tolist(), STD.tolist()),
+            ]
+        )
+
         dataset = ImageFolder(root=self.hparams.data_root + "/train", transform=transform)
 
         # split train and val
         end_train_idx = 7080
 
         self.train_dataset = Subset(dataset, range(0, end_train_idx))
-        self.val_dataset = Subset(dataset, range(end_train_idx+1, len(dataset)))
+        self.val_dataset = Subset(dataset, range(end_train_idx + 1, len(dataset)))
         self.test_dataset = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=self.hparams.num_workers)
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.hparams.batch_size,
+            shuffle=True,
+            num_workers=self.hparams.num_workers,
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+        return DataLoader(
+            self.val_dataset,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+        )
 
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+        )
 
     def configure_optimizers(self):
-        return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2))
+        return Adam(
+            self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2)
+        )
 
     def plot(self, x, r, a, prefix, n=16):
         """Plots n triplets of (original image, reconstr. image, anomaly map)
@@ -110,7 +123,7 @@ class Classifier(pl.LightningModule):
         Raises:
             IndexError: If n exceeds batch size
         """
-        
+
         if x.shape[0] < n:
             raise IndexError("You are attempting to plot more images than your batch contains!")
 
@@ -129,9 +142,11 @@ class Classifier(pl.LightningModule):
             plot = torch.cat((plot, grid), 2)
 
             # add offset between image triplets
-            if n > 1 and i < n-1:
+            if n > 1 and i < n - 1:
                 border_width = 6
-                border = torch.zeros(plot.shape[0], plot.shape[1], border_width, device=x1[0].device)
+                border = torch.zeros(
+                    plot.shape[0], plot.shape[1], border_width, device=x1[0].device
+                )
                 plot = torch.cat((plot, border), 2)
 
         name = f"{prefix}_input_anomaly_reconstr_images"
@@ -145,13 +160,14 @@ class Classifier(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
         return None
-    
+
     def test_step(self, batch, batch_idx):
         return None
 
     def test_epoch_end(self, outputs):
         return None
-        
+
+
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, prefix="classifier")
 
@@ -159,16 +175,17 @@ def main(hparams):
     autoencoder = HealhtyAE()
     autoencoder.load_state_dict(torch.load(AE_PATH))
     autoencoder.eval()
-    
+
     # create classifier
     model = Classifier(hparams, autoencoder)
 
     # print detailed summary with estimated network size
     summary(model, (hparams.nc, hparams.image_size, hparams.image_size), device="cpu")
-    
+
     trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs)
     trainer.fit(model)
     trainer.test(model)
+
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -180,7 +197,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_epochs", type=int, default=8, help="Number of maximum training epochs")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
     parser.add_argument("--nc", type=int, default=3, help="Number of channels in the training images")
-    parser.add_argument("--nf", type=int, default=16, help="Number of feature maps in classifier")
+    parser.add_argument("--nf", type=int, default=8, help="Number of feature maps in classifier")
     parser.add_argument("--lr", type=float, default=0.0002, help="Learning rate for optimizer")
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
