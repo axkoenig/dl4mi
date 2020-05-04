@@ -28,7 +28,7 @@ class Classifier(pl.LightningModule):
         self.autoencoder = autoencoder
 
         # number of neurons in last dense layers
-        self.nd = self.hparams.nf * 4 * (self.hparams.image_size // 64) ** 2
+        self.nd = self.hparams.nf * 4 * (self.hparams.image_size // 4**3) ** 2
 
         self.classifier = nn.Sequential(
             # input (nc) x 256 x 256
