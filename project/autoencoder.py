@@ -1,4 +1,4 @@
-python3 autoencoder.py --data_root "healthy_data" --log_dir "logs" --gpus 0__author__ = 'Alexander Koenig, Li Nguyen'
+__author__ = 'Alexander Koenig, Li Nguyen'
 
 from argparse import ArgumentParser
 
@@ -13,6 +13,8 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader, Subset
 from torchvision.datasets import ImageFolder
 from torchsummary import summary
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 # normalization constants
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
@@ -116,23 +118,41 @@ class HealhtyAE(pl.LightningModule):
                                         transforms.Normalize(MEAN.tolist(), STD.tolist()),
                                         ])
         
+
         dataset = ImageFolder(root=self.hparams.data_root + "/train", transform=transform)
         self.test_dataset = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
 
         # split train and val
         end_train_idx = 7080
+        end_train_idx = int(len(dataset) * 100/90)
 
         self.train_dataset = Subset(dataset, range(0, end_train_idx))
         self.val_dataset = Subset(dataset, range(end_train_idx+1, len(dataset))) 
+        self.test_dataset = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=self.hparams.num_workers)
+        return DataLoader(
+            self.train_dataset, 
+            batch_size=self.hparams.batch_size, 
+            shuffle=True, 
+            num_workers=self.hparams.num_workers
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, shuffle=False, num_workers=self.hparams.num_workers)
+        return DataLoader(
+            self.val_dataset, 
+            batch_size=self.hparams.batch_size, 
+            shuffle=False, 
+            num_workers=self.hparams.num_workers
+        )
 
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.hparams.batch_size, shuffle=True, num_workers=self.hparams.num_workers)
+        return DataLoader(
+            self.test_dataset, 
+            batch_size=self.hparams.batch_size, 
+            shuffle=False, 
+            num_workers=self.hparams.num_workers
+    )
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2))
@@ -205,19 +225,33 @@ class HealhtyAE(pl.LightningModule):
         return {'avg_test_loss': avg_loss, 'log': logs}
         
 def main(hparams):
-    logger = loggers.TensorBoardLogger(hparams.log_dir, name="naive_1")
+    logger = loggers.TensorBoardLogger(hparams.log_dir, name="healhty_ae")
 
     model = HealhtyAE(hparams)
     model.apply(HealhtyAE.weights_init)
-    
-    # save untrained model as a foundation for step 2: creating an anomaly map
-    PATH = './untrained_healthy_ae.pth'
-    torch.save(model.state_dict(), PATH)
 
     # print detailed summary with estimated network size
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
 
-    trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs)
+    checkpoint_callback = ModelCheckpoint(
+        filepath="checkpoints",
+        save_top_k = True,
+        verbose=True,
+        monitor="val_loss",
+        mode="min",
+        prefix="",
+    )
+
+    trainer = Trainer(
+        logger=logger, 
+        gpus=hparams.gpus, 
+        max_epochs=hparams.max_epochs, 
+        checkpoint_callback=checkpoint_callback,
+        default_save_path="checkpoints",
+        check_val_every_n_epoch=1,
+        show_progress_bar=True
+    )
+    
     trainer.fit(model)
     trainer.test(model)
 

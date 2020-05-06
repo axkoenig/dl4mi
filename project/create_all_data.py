@@ -7,7 +7,7 @@ import pydicom as dicom
 import cv2
 
 # set parameters here
-savepath = 'all_data'
+savepath = 'data'
 seed = 0
 np.random.seed(seed) # Reset the seed so all runs are the same.
 random.seed(seed)
@@ -69,13 +69,15 @@ fig1_csv = pd.read_csv(fig1_csvpath, encoding='ISO-8859-1', nrows=None)
 # stored as patient id, image filename and label
 filename_label = {'normal': [], 'pneumonia': [], 'COVID-19': []}
 count = {'normal': 0, 'pneumonia': 0, 'COVID-19': 0}
+# cohen dataset
 for index, row in cohen_csv.iterrows():
     f = row['finding'].split(',')[0] # take the first finding, for the case of COVID-19, ARDS
     if f in mapping: # 
         count[mapping[f]] += 1
         entry = [str(row['patientid']), row['filename'], mapping[f], row['view']]
         filename_label[mapping[f]].append(entry)
-        
+
+# figure 1 dataset        
 for index, row in fig1_csv.iterrows():
     if not str(row['finding']) == 'nan':
         f = row['finding'].split(',')[0] # take the first finding
@@ -116,24 +118,40 @@ for key in filename_label.keys():
         test_patients = []
     print('Key: ', key)
     print('Test patients: ', test_patients)
+
+    # we want to achieve the following folder structure:
+    # - test
+    #    - covid
+    #    - pneumonia
+    #    - healthy
+    # - train
+    #    - covid
+    #    - pneumonia
+    #    - healthy
+    if key == 'COVID-19':
+        save_folder = '/covid'
+    else:
+        save_folder = '/pneumonia'
+
     # go through all the patients
     for patient in arr:
-        if patient[0] not in patient_imgpath:
-            patient_imgpath[patient[0]] = [patient[1]]
+        if patient[0] not in patient_imgpath: # patient[0] is patientID and this patient is not in patient_imgpath dict at all
+            patient_imgpath[patient[0]] = [patient[1]] # patient[1] is image_name --> in patient_imgpath save with key patientId and value image_name
         else:
             if patient[1] not in patient_imgpath[patient[0]]:
-                patient_imgpath[patient[0]].append(patient[1])
+                patient_imgpath[patient[0]].append(patient[1]) # in case one patient has several images
             else:
                 continue  # skip since image has already been written
         if patient[0] in test_patients:
-            copyfile(os.path.join(cohen_imgpath, patient[1]), os.path.join(savepath, 'test', patient[1]))
+            copyfile(os.path.join(cohen_imgpath, patient[1]), os.path.join(savepath, 'test' + save_folder, patient[1]))
             test.append(patient)
             test_count[patient[2]] += 1
         else:
             if 'COVID' in patient[0]:
-                copyfile(os.path.join(fig1_imgpath, patient[1]), os.path.join(savepath, 'train', patient[1]))
+                # print(patient[0])
+                copyfile(os.path.join(fig1_imgpath, patient[1]), os.path.join(savepath, 'train' + save_folder, patient[1]))
             else:
-                copyfile(os.path.join(cohen_imgpath, patient[1]), os.path.join(savepath, 'train', patient[1]))
+                copyfile(os.path.join(cohen_imgpath, patient[1]), os.path.join(savepath, 'train' + save_folder, patient[1]))
             train.append(patient)
             train_count[patient[2]] += 1
 
@@ -162,6 +180,14 @@ for key in patients.keys():
     # num_test = max(1, round(split*num_diff_patients))
     test_patients = np.load('rsna-pneumonia-detection-challenge/rsna_test_patients_{}.npy'.format(key)) # random.sample(list(arr), num_test), download the .npy files from the repo.
     # np.save('rsna_test_patients_{}.npy'.format(key), np.array(test_patients))
+    
+    if key == "COVID-19":
+        save_folder = '/covid'
+    if key == "pneumonia":
+        save_folder = '/pneumonia'
+    else:
+        save_folder = '/healthy'
+
     for patient in arr:
         if patient not in patient_imgpath:
             patient_imgpath[patient] = [patient]
@@ -172,11 +198,11 @@ for key in patients.keys():
         pixel_array_numpy = ds.pixel_array
         imgname = patient + '.png'
         if patient in test_patients:
-            cv2.imwrite(os.path.join(savepath, 'test', imgname), pixel_array_numpy)
+            cv2.imwrite(os.path.join(savepath, 'test' + save_folder, imgname), pixel_array_numpy)
             test.append([patient, imgname, key])
             test_count[key] += 1
         else:
-            cv2.imwrite(os.path.join(savepath, 'train', imgname), pixel_array_numpy)
+            cv2.imwrite(os.path.join(savepath, 'train' + save_folder, imgname), pixel_array_numpy)
             train.append([patient, imgname, key])
             train_count[key] += 1
 
