@@ -5,13 +5,55 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
+import numpy as np
 from pytorch_lightning import Trainer, loggers
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Subset
+from torch.utils.data.sampler import WeightedRandomSampler
 from torchsummary import summary
 from torchvision.datasets import ImageFolder
+from torchvision import utils
 
 from autoencoder import HealhtyAE
+
+import matplotlib.pyplot as plt
+
+def get_label_string(labels, mapping):
+    """Produces string with class names
+
+    Parameters
+    ----------
+    labels : array
+        indices of classes of images
+    mapping : dict
+        class to index mapping
+    """
+    # get mapping and swap keys with values
+    mapping = dict((v,k) for k,v in mapping.items())
+    description = ""
+    for label in labels:
+        if label in mapping.keys():
+            description + mapping[label] + " "
+    return description
+
+
+def plot_dataset(dataset, n=4):
+    # retrieve random images from dataset 
+    choice = np.random.randint(len(dataset), size=n)
+    subset = Subset(dataset, choice)
+    images = [x[0] for x in subset]
+    labels = [x[1] for x in subset]
+    
+    # denormalize for visualization 
+    denormalization = transforms.Normalize((-MEAN / STD).tolist(), (1.0 / STD).tolist())
+    images = [denormalization(i) for i in images]
+
+    subtitle = get_label_string(labels, dataset.class_to_idx))
+    # make grid and plot
+    grid = utils.make_grid(images)
+    plt.figure(figsize = (15,6))
+    plt.imshow(np.transpose(grid.numpy(), (1,2,0)))
+    plt.show()
 
 # normalization constants
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
@@ -64,7 +106,11 @@ class Classifier(pl.LightningModule):
         return pred
 
     def prepare_data(self):
-
+        """Loads and rebalances data. 
+        
+        The class to index mapping is {'covid': 0, 'healthy': 1, 'pneumonia': 2} 
+        """
+        
         transform = transforms.Compose(
             [
                 transforms.Resize(self.hparams.image_size),
@@ -74,20 +120,40 @@ class Classifier(pl.LightningModule):
             ]
         )
 
-        dataset = ImageFolder(root=self.hparams.data_root + "/train", transform=transform)
+        augment = transforms.Compose(
+            [   
+                transforms.ColorJitter(brightness=0.1, contrast=0.1),
+                transforms.RandomAffine(degrees = 10),
+                transforms.RandomHorizontalFlip(),
+            ]
+        )
 
         # split train and val
-        end_train_idx = 7080
+        train_val_ds = ImageFolder(root=self.hparams.data_root + "/train", transform=transform)
+        end_train_idx = int(len(train_val_ds) * 100/90)
+        self.train_dataset = Subset(train_val_ds, range(0, end_train_idx))
+        self.val_dataset = Subset(train_val_ds, range(end_train_idx + 1, len(train_val_ds)))
+        self.test_ds = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
+        
+        plot_dataset(self.test_ds)
 
-        self.train_dataset = Subset(dataset, range(0, end_train_idx))
-        self.val_dataset = Subset(dataset, range(end_train_idx + 1, len(dataset)))
-        self.test_dataset = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
+
+        # get number of samples per class
+        targets = np.array(self.train_dataset.targets)
+        n_covid = (targets == 0).sum()
+        n_healthy = (targets == 1).sum()
+        n_pneumonia = (targets == 2).sum()
+
+        # configure sampler to rebalance training set
+        weights = 1 / torch.Tensor([n_covid, n_healthy, n_pneumonia])
+        sampler = WeightedRandomSampler(weights, self.hparams.batch_size)
 
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
             batch_size=self.hparams.batch_size,
             shuffle=True,
+            sampler=self.sampler, 
             num_workers=self.hparams.num_workers,
         )
 
