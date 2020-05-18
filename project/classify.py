@@ -1,22 +1,22 @@
 from argparse import ArgumentParser
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
-import numpy as np
 from pytorch_lightning import Trainer, loggers
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Subset, Dataset
+from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchsummary import summary
-from torchvision.datasets import ImageFolder
 from torchvision import utils
+from torchvision.datasets import ImageFolder
 
 from autoencoder import HealhtyAE
 
-import matplotlib.pyplot as plt
 
 def get_label_string(labels, mapping):
     """Produces string with class names
@@ -29,7 +29,7 @@ def get_label_string(labels, mapping):
         class to index mapping
     """
     # get mapping and swap keys with values
-    mapping = dict((v,k) for k,v in mapping.items())
+    mapping = dict((v, k) for k, v in mapping.items())
     description = ""
     for label in labels:
         if label in mapping.keys():
@@ -38,23 +38,24 @@ def get_label_string(labels, mapping):
 
 
 def plot_dataset(dataset, n=6):
-    # retrieve random images from dataset 
+    # retrieve random images from dataset
     choice = np.random.randint(len(dataset), size=n)
     subset = Subset(dataset, choice)
     images = [x[0] for x in subset]
     labels = [x[1] for x in subset]
-    
-    # denormalize for visualization 
+
+    # denormalize for visualization
     denormalization = transforms.Normalize((-MEAN / STD).tolist(), (1.0 / STD).tolist())
     images = [denormalization(i) for i in images]
 
     # make grid and plot
     grid = utils.make_grid(images)
     title = "Labels are: " + get_label_string(labels, dataset.class_to_idx)
-    plt.figure(figsize = (15,6))
+    plt.figure(figsize=(15, 6))
     plt.title(title)
-    plt.imshow(np.transpose(grid.numpy(), (1,2,0)))
+    plt.imshow(np.transpose(grid.numpy(), (1, 2, 0)))
     plt.show()
+
 
 # normalization constants
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
@@ -64,6 +65,7 @@ STD = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 AE_PATH = "./healthy_ae.pth"
 DEBUG = True
 
+
 class Classifier(pl.LightningModule):
     def __init__(self, hparams, autoencoder):
         super().__init__()
@@ -71,7 +73,7 @@ class Classifier(pl.LightningModule):
         self.autoencoder = autoencoder
 
         # number of neurons in last dense layers
-        self.nd = self.hparams.nf * 4 * (self.hparams.image_size // 4**3) ** 2
+        self.nd = self.hparams.nf * 4 * (self.hparams.image_size // 4 ** 3) ** 2
 
         self.classifier = nn.Sequential(
             # input (nc) x 256 x 256
@@ -111,35 +113,45 @@ class Classifier(pl.LightningModule):
         
         The class to index mapping is {'covid': 0, 'healthy': 1, 'pneumonia': 2} 
         """
-        
+
         transform = {
             "train": transforms.Compose(
+                [
             [   
-                transforms.RandomResizedCrop(self.hparams.image_size, scale=(0.8, 1.0)),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomRotation(degrees = 5),
-                transforms.ColorJitter(brightness=0.1, contrast=0.1),
-                transforms.ToTensor(),
-                transforms.Normalize(MEAN.tolist(), STD.tolist()),
-            ]),
+                [
+            [   
+                [
+            [   
+                [
+            [   
+                [
+                    transforms.RandomResizedCrop(self.hparams.image_size, scale=(0.8, 1.0)),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomRotation(degrees=5),
+                    transforms.ColorJitter(brightness=0.1, contrast=0.1),
+                    transforms.ToTensor(),
+                    transforms.Normalize(MEAN.tolist(), STD.tolist()),
+                ]
+            ),
             "test": transforms.Compose(
-            [
-                transforms.Resize(self.hparams.image_size),
-                transforms.CenterCrop(self.hparams.image_size),
-                transforms.ToTensor(),
-                transforms.Normalize(MEAN.tolist(), STD.tolist()),
-            ])
+                [
+                    transforms.Resize(self.hparams.image_size),
+                    transforms.CenterCrop(self.hparams.image_size),
+                    transforms.ToTensor(),
+                    transforms.Normalize(MEAN.tolist(), STD.tolist()),
+                ]
+            ),
         }
 
         self.train_ds = ImageFolder(root=self.hparams.data_root + "/train", transform=transform["train"])
-        self.val_ds =  ImageFolder(root=self.hparams.data_root + "/val", transform=transform["test"])
+        self.val_ds = ImageFolder(root=self.hparams.data_root + "/val", transform=transform["test"])
         self.test_ds = ImageFolder(root=self.hparams.data_root + "/test", transform=transform["test"])
-        
+
         if DEBUG:
             plot_dataset(self.train_ds)
 
         # get number of samples per class
-        targets = np.array(self.train_ds.targets)    
+        targets = np.array(self.train_ds.targets)
         n_covid = (targets == 0).sum()
         n_healthy = (targets == 1).sum()
         n_pneumonia = (targets == 2).sum()
@@ -154,7 +166,7 @@ class Classifier(pl.LightningModule):
             self.train_ds,
             batch_size=self.hparams.batch_size,
             shuffle=True,
-            sampler=self.sampler, 
+            sampler=self.sampler,
             num_workers=self.hparams.num_workers,
         )
 
@@ -211,9 +223,7 @@ class Classifier(pl.LightningModule):
             # add offset between image triplets
             if n > 1 and i < n - 1:
                 border_width = 6
-                border = torch.zeros(
-                    plot.shape[0], plot.shape[1], border_width, device=x1[0].device
-                )
+                border = torch.zeros(plot.shape[0], plot.shape[1], border_width, device=x1[0].device)
                 plot = torch.cat((plot, border), 2)
 
         name = f"{prefix}_input_anomaly_reconstr_images"
