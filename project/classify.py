@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 import numpy as np
 from pytorch_lightning import Trainer, loggers
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, Dataset
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchsummary import summary
 from torchvision.datasets import ImageFolder
@@ -33,7 +33,7 @@ def get_label_string(labels, mapping):
     description = ""
     for label in labels:
         if label in mapping.keys():
-            description + mapping[label] + " "
+            description = description + mapping[label] + " "
     return description
 
 
@@ -48,12 +48,32 @@ def plot_dataset(dataset, n=4):
     denormalization = transforms.Normalize((-MEAN / STD).tolist(), (1.0 / STD).tolist())
     images = [denormalization(i) for i in images]
 
-    subtitle = get_label_string(labels, dataset.class_to_idx))
     # make grid and plot
     grid = utils.make_grid(images)
+    title = "Labels are: " + get_label_string(labels, dataset.class_to_idx)
     plt.figure(figsize = (15,6))
+    plt.title(title)
     plt.imshow(np.transpose(grid.numpy(), (1,2,0)))
     plt.show()
+
+class MapDataset(Dataset):
+    """
+    Given a dataset, creates a dataset which applies a mapping function
+    to its items (lazily, only when an item is called).
+
+    Note that data is not cloned/copied from the initial dataset.
+    Taken from https://discuss.pytorch.org/t/apply-different-transform-data-augmentation-to-train-and-validation/63580/2 
+    """
+
+    def __init__(self, dataset, map_fn):
+        self.dataset = dataset
+        self.map = map_fn
+
+    def __getitem__(self, index):
+        return self.map(self.dataset[index])
+
+    def __len__(self):
+        return len(self.dataset)
 
 # normalization constants
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
@@ -61,7 +81,7 @@ STD = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 
 # other constants
 AE_PATH = "./healthy_ae.pth"
-
+DEBUG = True
 
 class Classifier(pl.LightningModule):
     def __init__(self, hparams, autoencoder):
@@ -122,27 +142,32 @@ class Classifier(pl.LightningModule):
 
         augment = transforms.Compose(
             [   
-                transforms.ColorJitter(brightness=0.1, contrast=0.1),
-                transforms.RandomAffine(degrees = 10),
+                transforms.RandomResizedCrop(self.hparams.image_size, scale=(0.8, 1.0)),
                 transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(degrees = 5),
+                transforms.ColorJitter(brightness=0.1, contrast=0.1),
+                transforms.ToTensor(),
             ]
         )
 
         # split train and val
-        train_val_ds = ImageFolder(root=self.hparams.data_root + "/train", transform=transform)
+        train_val_ds = ImageFolder(root=self.hparams.data_root + "/train")
         end_train_idx = int(len(train_val_ds) * 100/90)
-        self.train_dataset = Subset(train_val_ds, range(0, end_train_idx))
-        self.val_dataset = Subset(train_val_ds, range(end_train_idx + 1, len(train_val_ds)))
+        self.train_ds = MapDataset(Subset(train_val_ds, range(0, end_train_idx)), augment)
+        self.val_ds =  MapDataset(Subset(train_val_ds, range(end_train_idx + 1, len(train_val_ds))), transform)
         self.test_ds = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
         
-        plot_dataset(self.test_ds)
-
+        import pdb; pdb.set_trace()
+        # if DEBUG:
+        #     plot_dataset(self.train_ds)
 
         # get number of samples per class
-        targets = np.array(self.train_dataset.targets)
+        # TODO use targets of only train set, but should be fine for now since distribution in both train and val should be the same
+        targets = np.array(train_val_ds.targets)    
         n_covid = (targets == 0).sum()
         n_healthy = (targets == 1).sum()
         n_pneumonia = (targets == 2).sum()
+        print(f"{n_covid} COVID images, {n_healthy} healthy images, {n_pneumonia} pneumonia images")
 
         # configure sampler to rebalance training set
         weights = 1 / torch.Tensor([n_covid, n_healthy, n_pneumonia])
@@ -150,7 +175,7 @@ class Classifier(pl.LightningModule):
 
     def train_dataloader(self):
         return DataLoader(
-            self.train_dataset,
+            self.train_ds,
             batch_size=self.hparams.batch_size,
             shuffle=True,
             sampler=self.sampler, 
@@ -159,7 +184,7 @@ class Classifier(pl.LightningModule):
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_dataset,
+            self.val_ds,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
         )
@@ -235,7 +260,7 @@ class Classifier(pl.LightningModule):
 
 
 def main(hparams):
-    logger = loggers.TensorBoardLogger(hparams.log_dir, prefix="classifier")
+    logger = loggers.TensorBoardLogger(hparams.log_dir, name="classifier")
 
     # load pretrained autoencoder
     autoencoder = HealhtyAE()
