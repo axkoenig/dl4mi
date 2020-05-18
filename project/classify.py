@@ -37,7 +37,7 @@ def get_label_string(labels, mapping):
     return description
 
 
-def plot_dataset(dataset, n=4):
+def plot_dataset(dataset, n=6):
     # retrieve random images from dataset 
     choice = np.random.randint(len(dataset), size=n)
     subset = Subset(dataset, choice)
@@ -55,25 +55,6 @@ def plot_dataset(dataset, n=4):
     plt.title(title)
     plt.imshow(np.transpose(grid.numpy(), (1,2,0)))
     plt.show()
-
-class MapDataset(Dataset):
-    """
-    Given a dataset, creates a dataset which applies a mapping function
-    to its items (lazily, only when an item is called).
-
-    Note that data is not cloned/copied from the initial dataset.
-    Taken from https://discuss.pytorch.org/t/apply-different-transform-data-augmentation-to-train-and-validation/63580/2 
-    """
-
-    def __init__(self, dataset, map_fn):
-        self.dataset = dataset
-        self.map = map_fn
-
-    def __getitem__(self, index):
-        return self.map(self.dataset[index])
-
-    def __len__(self):
-        return len(self.dataset)
 
 # normalization constants
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
@@ -131,43 +112,38 @@ class Classifier(pl.LightningModule):
         The class to index mapping is {'covid': 0, 'healthy': 1, 'pneumonia': 2} 
         """
         
-        transform = transforms.Compose(
-            [
-                transforms.Resize(self.hparams.image_size),
-                transforms.CenterCrop(self.hparams.image_size),
-                transforms.ToTensor(),
-                transforms.Normalize(MEAN.tolist(), STD.tolist()),
-            ]
-        )
-
-        augment = transforms.Compose(
+        transform = {
+            "train": transforms.Compose(
             [   
                 transforms.RandomResizedCrop(self.hparams.image_size, scale=(0.8, 1.0)),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(degrees = 5),
                 transforms.ColorJitter(brightness=0.1, contrast=0.1),
                 transforms.ToTensor(),
-            ]
-        )
+                transforms.Normalize(MEAN.tolist(), STD.tolist()),
+            ]),
+            "test": transforms.Compose(
+            [
+                transforms.Resize(self.hparams.image_size),
+                transforms.CenterCrop(self.hparams.image_size),
+                transforms.ToTensor(),
+                transforms.Normalize(MEAN.tolist(), STD.tolist()),
+            ])
+        }
 
-        # split train and val
-        train_val_ds = ImageFolder(root=self.hparams.data_root + "/train")
-        end_train_idx = int(len(train_val_ds) * 100/90)
-        self.train_ds = MapDataset(Subset(train_val_ds, range(0, end_train_idx)), augment)
-        self.val_ds =  MapDataset(Subset(train_val_ds, range(end_train_idx + 1, len(train_val_ds))), transform)
-        self.test_ds = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
+        self.train_ds = ImageFolder(root=self.hparams.data_root + "/train", transform=transform["train"])
+        self.val_ds =  ImageFolder(root=self.hparams.data_root + "/val", transform=transform["test"])
+        self.test_ds = ImageFolder(root=self.hparams.data_root + "/test", transform=transform["test"])
         
-        import pdb; pdb.set_trace()
-        # if DEBUG:
-        #     plot_dataset(self.train_ds)
+        if DEBUG:
+            plot_dataset(self.train_ds)
 
         # get number of samples per class
-        # TODO use targets of only train set, but should be fine for now since distribution in both train and val should be the same
-        targets = np.array(train_val_ds.targets)    
+        targets = np.array(self.train_ds.targets)    
         n_covid = (targets == 0).sum()
         n_healthy = (targets == 1).sum()
         n_pneumonia = (targets == 2).sum()
-        print(f"{n_covid} COVID images, {n_healthy} healthy images, {n_pneumonia} pneumonia images")
+        print(f"{n_covid} COVID images, {n_healthy} healthy images, {n_pneumonia} pneumonia images in training set")
 
         # configure sampler to rebalance training set
         weights = 1 / torch.Tensor([n_covid, n_healthy, n_pneumonia])
