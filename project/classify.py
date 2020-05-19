@@ -63,7 +63,6 @@ STD = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 
 # other constants
 AE_PATH = "./healthy_ae.pth"
-DEBUG = True
 
 
 class Classifier(pl.LightningModule):
@@ -101,12 +100,17 @@ class Classifier(pl.LightningModule):
 
     def forward(self, x):
         # create anomaly map
-        decoded = self.autoencoder(x)
-        anomaly = x - decoded
+        reconstructed = self.autoencoder(x)
+        anomaly = x - reconstructed
 
         # classify anomaly map
-        pred = self.classifier(anomaly)
-        return pred
+        prediction = self.classifier(anomaly)
+
+        return {
+            "reconstructed": reconstructed, 
+            "anomaly": anomaly,
+            "prediction": prediction
+        }
 
     def prepare_data(self):
         """Loads and rebalances data. 
@@ -116,14 +120,6 @@ class Classifier(pl.LightningModule):
 
         transform = {
             "train": transforms.Compose(
-                [
-            [   
-                [
-            [   
-                [
-            [   
-                [
-            [   
                 [
                     transforms.RandomResizedCrop(self.hparams.image_size, scale=(0.8, 1.0)),
                     transforms.RandomHorizontalFlip(),
@@ -147,7 +143,7 @@ class Classifier(pl.LightningModule):
         self.val_ds = ImageFolder(root=self.hparams.data_root + "/val", transform=transform["test"])
         self.test_ds = ImageFolder(root=self.hparams.data_root + "/test", transform=transform["test"])
 
-        if DEBUG:
+        if self.hparams.debug:
             plot_dataset(self.train_ds)
 
         # get number of samples per class
@@ -159,13 +155,12 @@ class Classifier(pl.LightningModule):
 
         # configure sampler to rebalance training set
         weights = 1 / torch.Tensor([n_covid, n_healthy, n_pneumonia])
-        sampler = WeightedRandomSampler(weights, self.hparams.batch_size)
+        self.sampler = WeightedRandomSampler(weights, self.hparams.batch_size)
 
     def train_dataloader(self):
         return DataLoader(
             self.train_ds,
             batch_size=self.hparams.batch_size,
-            shuffle=True,
             sampler=self.sampler,
             num_workers=self.hparams.num_workers,
         )
@@ -179,15 +174,13 @@ class Classifier(pl.LightningModule):
 
     def test_dataloader(self):
         return DataLoader(
-            self.test_dataset,
+            self.test_ds,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
         )
 
     def configure_optimizers(self):
-        return Adam(
-            self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2)
-        )
+        return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2))
 
     def plot(self, x, r, a, prefix, n=16):
         """Plots n triplets of (original image, reconstr. image, anomaly map)
@@ -213,36 +206,58 @@ class Classifier(pl.LightningModule):
         a = [denormalization(i) for i in a[:n]]
 
         # create empty plot and send to device
-        plot = torch.tensor([], device=x1[0].device)
+        plot = torch.tensor([], device=x[0].device)
 
         for i in range(n):
 
-            grid = vutils.make_grid([x[i], r[i], a[i]], 1)
+            grid = utils.make_grid([x[i], r[i], a[i]], 1)
             plot = torch.cat((plot, grid), 2)
 
             # add offset between image triplets
             if n > 1 and i < n - 1:
                 border_width = 6
-                border = torch.zeros(plot.shape[0], plot.shape[1], border_width, device=x1[0].device)
+                border = torch.zeros(plot.shape[0], plot.shape[1], border_width, device=x[0].device)
                 plot = torch.cat((plot, border), 2)
 
         name = f"{prefix}_input_anomaly_reconstr_images"
         self.logger.experiment.add_image(name, plot)
 
     def training_step(self, batch, batch_idx):
-        return None
+        return self._shared_eval(batch, batch_idx)
 
     def validation_step(self, batch, batch_idx):
-        return None
+        return self._shared_eval(batch, batch_idx, prefix="val", plot=True)
 
     def validation_epoch_end(self, outputs):
-        return None
+        return self._shared_eval_epoch_end(outputs, "val")
 
     def test_step(self, batch, batch_idx):
-        return None
+        return self._shared_eval(batch, batch_idx, prefix="test", plot=True)
 
     def test_epoch_end(self, outputs):
-        return None
+        return self._shared_eval_epoch_end(outputs, "test")
+
+    def _shared_eval(self, batch, batch_idx, prefix="", plot=False):
+        
+        imgs, labels = batch
+        out = self(imgs)
+        loss = F.cross_entropy(out["prediction"], labels)
+        
+        # plot input, mixed and reconstructed images at beginning of epoch
+        if plot and batch_idx == 0:
+            self.plot(imgs, out["reconstructed"], out["anomaly"], prefix)
+
+        # add underscore to prefix
+        if prefix:
+            prefix = prefix + "_"
+
+        logs = {f"{prefix}loss": loss}
+        return {f"{prefix}loss": loss, "log": logs}
+
+    def _shared_eval_epoch_end(self, outputs, prefix):
+        avg_loss = torch.stack([x[f"{prefix}_loss"] for x in outputs]).mean()
+        logs = {f"avg_{prefix}_loss": avg_loss}
+        return {f"avg_{prefix}_loss": avg_loss, "log": logs}
 
 
 def main(hparams):
@@ -279,6 +294,7 @@ if __name__ == "__main__":
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
     parser.add_argument("--gpus", type=int, default=0, help="Number of GPUs. Use 0 for CPU mode")
+    parser.add_argument("--debug", type=bool, default=False, help="Debug mode")
 
     args = parser.parse_args()
     main(args)
