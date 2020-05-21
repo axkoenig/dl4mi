@@ -114,9 +114,7 @@ class Classifier(pl.LightningModule):
         }
 
     def prepare_data(self):
-        """Loads and rebalances data. 
-        
-        The class to index mapping is {'covid': 0, 'healthy': 1, 'pneumonia': 2} 
+        """Loads and rebalances data.
         """
 
         transform = {
@@ -140,20 +138,24 @@ class Classifier(pl.LightningModule):
             ),
         }
 
-        self.train_ds = COVIDx("train", transform=transform["train"])
+        # retrieve COVIDx dataset from COVID-Net paper
+        self.train_ds = COVIDx("train")
         self.test_ds = COVIDx("test", transform=transform["test"])
-        self.val_ds = COVIDx("test", transform=transform["test"])
 
         # configure sampler to rebalance training set
         weights = 1 / torch.Tensor([self.train_ds.counter["normal"], self.train_ds.counter["pneumonia"], self.train_ds.counter["COVID-19"]])
         self.sampler = WeightedRandomSampler(weights, self.hparams.batch_size)
 
-        # # split into train and val
-        # train_split = 0.95
-        # train_size = int(train_split * len(self.train_ds))
-        # val_size = len(self.train_ds) - train_size
-        # self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
+        # further split train into train and val
+        train_split = 0.95
+        train_size = int(train_split * len(self.train_ds))
+        val_size = len(self.train_ds) - train_size
+        self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
 
+        # apply correct transforms
+        self.train_ds.dataset.transform = transform["train"]
+        self.val_ds.dataset.transform = transform["test"]
+        
         if self.hparams.debug:
             plot_dataset(self.train_ds)
 
@@ -294,7 +296,7 @@ if __name__ == "__main__":
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
     parser.add_argument("--gpus", type=int, default=0, help="Number of GPUs. Use 0 for CPU mode")
-    parser.add_argument("--debug", type=bool, default=False, help="Debug mode")
+    parser.add_argument("--debug", type=bool, default=True, help="Debug mode")
 
     args = parser.parse_args()
     main(args)

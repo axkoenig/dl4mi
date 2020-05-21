@@ -6,7 +6,8 @@
 *.png
 *.code-workspace
 *logs*
-data
+*.jpg
+*.jpeg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -25,7 +25,7 @@ class COVIDx(Dataset):
 
         # count number of images per class
         self.counter = Counter(self.labels)
-
+        
         print(f"Class distribution in {mode} set: {self.counter}")
         print(f"Length of {mode} set: {len(self.paths)}")
         
