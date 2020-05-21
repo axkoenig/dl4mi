@@ -9,13 +9,14 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 from pytorch_lightning import Trainer, loggers
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchsummary import summary
 from torchvision import utils
 from torchvision.datasets import ImageFolder
 
 from autoencoder import HealhtyAE
+from dataset import COVIDx
 
 
 def get_label_string(labels, mapping):
@@ -139,23 +140,22 @@ class Classifier(pl.LightningModule):
             ),
         }
 
-        self.train_ds = ImageFolder(root=self.hparams.data_root + "/train", transform=transform["train"])
-        self.val_ds = ImageFolder(root=self.hparams.data_root + "/val", transform=transform["test"])
-        self.test_ds = ImageFolder(root=self.hparams.data_root + "/test", transform=transform["test"])
+        self.train_ds = COVIDx("train", transform=transform["train"])
+        self.test_ds = COVIDx("test", transform=transform["test"])
+        self.val_ds = COVIDx("test", transform=transform["test"])
+
+        # configure sampler to rebalance training set
+        weights = 1 / torch.Tensor([self.train_ds.counter["normal"], self.train_ds.counter["pneumonia"], self.train_ds.counter["COVID-19"]])
+        self.sampler = WeightedRandomSampler(weights, self.hparams.batch_size)
+
+        # # split into train and val
+        # train_split = 0.95
+        # train_size = int(train_split * len(self.train_ds))
+        # val_size = len(self.train_ds) - train_size
+        # self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
 
         if self.hparams.debug:
             plot_dataset(self.train_ds)
-
-        # get number of samples per class
-        targets = np.array(self.train_ds.targets)
-        n_covid = (targets == 0).sum()
-        n_healthy = (targets == 1).sum()
-        n_pneumonia = (targets == 2).sum()
-        print(f"{n_covid} COVID images, {n_healthy} healthy images, {n_pneumonia} pneumonia images in training set")
-
-        # configure sampler to rebalance training set
-        weights = 1 / torch.Tensor([n_covid, n_healthy, n_pneumonia])
-        self.sampler = WeightedRandomSampler(weights, self.hparams.batch_size)
 
     def train_dataloader(self):
         return DataLoader(
@@ -182,7 +182,7 @@ class Classifier(pl.LightningModule):
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2))
 
-    def plot(self, x, r, a, prefix, n=16):
+    def plot(self, x, r, a, prefix, n=4):
         """Plots n triplets of (original image, reconstr. image, anomaly map)
 
         Args:
@@ -203,7 +203,7 @@ class Classifier(pl.LightningModule):
         denormalization = transforms.Normalize((-MEAN / STD).tolist(), (1.0 / STD).tolist())
         x = [denormalization(i) for i in x[:n]]
         r = [denormalization(i) for i in r[:n]]
-        a = [denormalization(i) for i in a[:n]]
+        # a = [denormalization(i) for i in a[:n]]
 
         # create empty plot and send to device
         plot = torch.tensor([], device=x[0].device)
@@ -219,7 +219,7 @@ class Classifier(pl.LightningModule):
                 border = torch.zeros(plot.shape[0], plot.shape[1], border_width, device=x[0].device)
                 plot = torch.cat((plot, border), 2)
 
-        name = f"{prefix}_input_anomaly_reconstr_images"
+        name = f"{prefix}_input_reconstr_anomaly_images"
         self.logger.experiment.add_image(name, plot)
 
     def training_step(self, batch, batch_idx):
