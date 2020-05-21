@@ -3,7 +3,46 @@ from collections import Counter
 
 import torch
 from torch.utils.data import Dataset
+from torch import randperm
+from torch._utils import _accumulate
 from PIL import Image
+
+
+def random_split(dataset, lengths):
+    """
+    Randomly split a dataset into non-overlapping new datasets of given lengths.
+
+    Arguments:
+        dataset (Dataset): Dataset to be split
+        lengths (sequence): lengths of splits to be produced
+    """
+    if sum(lengths) != len(dataset):
+        raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
+
+    indices = randperm(sum(lengths)).tolist()
+    return [TransformableSubset(dataset, indices[offset - length:offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+
+class TransformableSubset(Dataset):
+    """
+    Subset of a dataset at specified indices with transform.
+
+    Arguments:
+        dataset (Dataset): The whole Dataset
+        indices (sequence): Indices in the whole set selected for subset
+    """
+    def __init__(self, dataset, indices, transform=None):
+        self.dataset = dataset
+        self.indices = indices
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        im, labels = self.dataset[self.indices[idx]]
+        if self.transform:
+            im = self.transform(im)
+        return im, labels
+
+    def __len__(self):
+        return len(self.indices)
 
 class COVIDx(Dataset):
 
@@ -25,9 +64,9 @@ class COVIDx(Dataset):
 
         # count number of images per class
         self.counter = Counter(self.labels)
-        
-        print(f"Class distribution in {mode} set: {self.counter}")
-        print(f"Length of {mode} set: {len(self.paths)}")
+
+        print(f"Class distribution in COVIDx {mode} set: {self.counter}")
+        print(f"Length of COVIDx {mode} set: {len(self.paths)}")
         
     def __len__(self):
         return len(self.paths)

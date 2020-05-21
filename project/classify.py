@@ -9,33 +9,14 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 from pytorch_lightning import Trainer, loggers
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Dataset, Subset, random_split
+from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchsummary import summary
 from torchvision import utils
 from torchvision.datasets import ImageFolder
 
 from autoencoder import HealhtyAE
-from dataset import COVIDx
-
-
-def get_label_string(labels, mapping):
-    """Produces string with class names
-
-    Parameters
-    ----------
-    labels : array
-        indices of classes of images
-    mapping : dict
-        class to index mapping
-    """
-    # get mapping and swap keys with values
-    mapping = dict((v, k) for k, v in mapping.items())
-    description = ""
-    for label in labels:
-        if label in mapping.keys():
-            description = description + mapping[label] + " "
-    return description
+from dataset import COVIDx, random_split
 
 
 def plot_dataset(dataset, n=6):
@@ -51,7 +32,16 @@ def plot_dataset(dataset, n=6):
 
     # make grid and plot
     grid = utils.make_grid(images)
-    title = "Labels are: " + get_label_string(labels, dataset.class_to_idx)
+    label_string = []
+    for label in labels: 
+        if "0": 
+            label_string.append("normal")
+        elif "1": 
+            label_string.append("pneumonia")
+        elif "2": 
+            label_string.append("COVID-19")
+
+    title = "Labels are: " + str(label_string)
     plt.figure(figsize=(15, 6))
     plt.title(title)
     plt.imshow(np.transpose(grid.numpy(), (1, 2, 0)))
@@ -153,9 +143,9 @@ class Classifier(pl.LightningModule):
         self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
 
         # apply correct transforms
-        self.train_ds.dataset.transform = transform["train"]
-        self.val_ds.dataset.transform = transform["test"]
-        
+        self.train_ds.transform = transform["train"]
+        self.val_ds.transform = transform["test"]
+
         if self.hparams.debug:
             plot_dataset(self.train_ds)
 
