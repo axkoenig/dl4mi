@@ -20,7 +20,11 @@ def random_split(dataset, lengths):
         raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
 
     indices = randperm(sum(lengths)).tolist()
-    return [TransformableSubset(dataset, indices[offset - length:offset]) for offset, length in zip(_accumulate(lengths), lengths)]
+    return [
+        TransformableSubset(dataset, indices[offset - length : offset])
+        for offset, length in zip(_accumulate(lengths), lengths)
+    ]
+
 
 class TransformableSubset(Dataset):
     """
@@ -30,6 +34,7 @@ class TransformableSubset(Dataset):
         dataset (Dataset): The whole Dataset
         indices (sequence): Indices in the whole set selected for subset
     """
+
     def __init__(self, dataset, indices, transform=None):
         self.dataset = dataset
         self.indices = indices
@@ -44,8 +49,8 @@ class TransformableSubset(Dataset):
     def __len__(self):
         return len(self.indices)
 
-class COVIDx(Dataset):
 
+class COVIDx(Dataset):
     def __init__(self, mode, root_dir="./data", transform=None):
 
         self.img_dir = os.path.join(root_dir, mode)
@@ -67,24 +72,24 @@ class COVIDx(Dataset):
 
         print(f"Class distribution in COVIDx {mode} set: {self.counter}")
         print(f"Length of COVIDx {mode} set: {len(self.paths)}")
-        
+
     def __len__(self):
         return len(self.paths)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        
+
         img_name = os.path.join(self.img_dir, self.paths[idx])
         if not os.path.exists(img_name):
             Exception(f"Image {img_path} does not exist!")
-            
+
         image = Image.open(img_name).convert("RGB")
         label = torch.tensor(self.mapping[self.labels[idx]], dtype=torch.long)
-        
+
         if self.transform:
             image = self.transform(image)
-        
+
         return image, label
 
     def read_file(self, file):

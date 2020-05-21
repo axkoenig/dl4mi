@@ -33,12 +33,12 @@ def plot_dataset(dataset, n=6):
     # make grid and plot
     grid = utils.make_grid(images)
     label_string = []
-    for label in labels: 
-        if "0": 
+    for label in labels:
+        if "0":
             label_string.append("normal")
-        elif "1": 
+        elif "1":
             label_string.append("pneumonia")
-        elif "2": 
+        elif "2":
             label_string.append("COVID-19")
 
     title = "Labels are: " + str(label_string)
@@ -97,11 +97,7 @@ class Classifier(pl.LightningModule):
         # classify anomaly map
         prediction = self.classifier(anomaly)
 
-        return {
-            "reconstructed": reconstructed, 
-            "anomaly": anomaly,
-            "prediction": prediction
-        }
+        return {"reconstructed": reconstructed, "anomaly": anomaly, "prediction": prediction}
 
     def prepare_data(self):
         """Loads and rebalances data.
@@ -133,7 +129,13 @@ class Classifier(pl.LightningModule):
         self.test_ds = COVIDx("test", transform=transform["test"])
 
         # configure sampler to rebalance training set
-        weights = 1 / torch.Tensor([self.train_ds.counter["normal"], self.train_ds.counter["pneumonia"], self.train_ds.counter["COVID-19"]])
+        weights = 1 / torch.Tensor(
+            [
+                self.train_ds.counter["normal"],
+                self.train_ds.counter["pneumonia"],
+                self.train_ds.counter["COVID-19"],
+            ]
+        )
         self.sampler = WeightedRandomSampler(weights, self.hparams.batch_size)
 
         # further split train into train and val
@@ -159,16 +161,12 @@ class Classifier(pl.LightningModule):
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_ds,
-            batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
+            self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers,
         )
 
     def test_dataloader(self):
         return DataLoader(
-            self.test_ds,
-            batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
+            self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers,
         )
 
     def configure_optimizers(self):
@@ -230,11 +228,11 @@ class Classifier(pl.LightningModule):
         return self._shared_eval_epoch_end(outputs, "test")
 
     def _shared_eval(self, batch, batch_idx, prefix="", plot=False):
-        
+
         imgs, labels = batch
         out = self(imgs)
         loss = F.cross_entropy(out["prediction"], labels)
-        
+
         # plot input, mixed and reconstructed images at beginning of epoch
         if plot and batch_idx == 0:
             self.plot(imgs, out["reconstructed"], out["anomaly"], prefix)
