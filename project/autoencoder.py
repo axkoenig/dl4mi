@@ -15,6 +15,7 @@ from torchvision.datasets import ImageFolder
 from torchsummary import summary
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
+from dataset import COVIDx
 
 # normalization constants
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
@@ -55,11 +56,11 @@ class HealhtyAE(pl.LightningModule):
             nn.Conv2d(hparams.nfe*32, hparams.nz, 4, 2, 1),
             nn.BatchNorm2d(hparams.nz),
             nn.LeakyReLU(0.2, inplace=True),
-            # output 2x2x512
+            # output 2x2x1024
         )
 
         self.decoder = nn.Sequential(             
-            # input (nz) x 2 x 2, i.e. 512 x 2 x 2 in our case
+            # input (nz) x 2 x 2, i.e. 1024 x 2 x 2 in our case
             nn.ConvTranspose2d(hparams.nz, hparams.nfd * 32, 4, 1, 0, bias=False),
             nn.BatchNorm2d(hparams.nfd * 32),
             nn.ReLU(True),
@@ -118,17 +119,9 @@ class HealhtyAE(pl.LightningModule):
                                         transforms.Normalize(MEAN.tolist(), STD.tolist()),
                                         ])
         
-
-        dataset = ImageFolder(root=self.hparams.data_root + "/train", transform=transform)
-        self.test_dataset = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
-
-        # split train and val
-        end_train_idx = 7080
-        end_train_idx = int(len(dataset) * 100/90)
-
-        self.train_dataset = Subset(dataset, range(0, end_train_idx))
-        self.val_dataset = Subset(dataset, range(end_train_idx+1, len(dataset))) 
-        self.test_dataset = ImageFolder(root=self.hparams.data_root + "/test", transform=transform)
+        self.train_ds = COVIDx("train", transform=transform)
+        self.test_ds = COVIDx("test", transform=transform)
+        self.val_ds = COVIDx("test", transform=transform)
 
     def train_dataloader(self):
         return DataLoader(
@@ -261,8 +254,8 @@ def main(hparams):
 if __name__ == "__main__":
     parser = ArgumentParser()
 
-    parser.add_argument("--data_root", type=str, default="/content/drive/My\ Drive/TAU/dl4mi/project/data", help="Data root directory, where train and test folders are located")
-    parser.add_argument("--log_dir", type=str, default="/content/drive/My\ Drive/TAU/dl4mi/project/logs", help="Logging directory")
+    parser.add_argument("--data_root", type=str, default="data", help="Data root directory, where train and test folders are located")
+    parser.add_argument("--log_dir", type=str, default="logs", help="Logging directory")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
     parser.add_argument("--img_size", type=int, default=256, help="Spatial size of training images")
     parser.add_argument("--max_epochs", type=int, default=8, help="Number of maximum training epochs")
@@ -272,7 +265,7 @@ if __name__ == "__main__":
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
     parser.add_argument("--gpus", type=int, default=2, help="Number of GPUs. Use 0 for CPU mode")
     parser.add_argument("--nc", type=int, default=3, help="Number of channels in the training images, e.g. 3 for RGB images")
-    parser.add_argument("--nz", type=int, default=512, help="Size of latent codes after encoders, i.e. number of feature maps in latent representation")
+    parser.add_argument("--nz", type=int, default=1024, help="Size of latent codes after encoders, i.e. number of feature maps in latent representation")
     parser.add_argument("--nfe", type=int, default=32, help="Number of feature maps in encoders")
     parser.add_argument("--nfd", type=int, default=32, help="Number of of feature maps in decoder")
     
