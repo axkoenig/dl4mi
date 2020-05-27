@@ -15,8 +15,9 @@ from torchsummary import summary
 from torchvision import utils
 from torchvision.datasets import ImageFolder
 
-from autoencoder import HealhtyAE
+from autoencoder import NormalAE
 from dataset import COVIDx, random_split
+from transforms import Transform
 
 
 def plot_dataset(dataset, n=6):
@@ -52,9 +53,6 @@ def plot_dataset(dataset, n=6):
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 STD = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 
-# other constants
-AE_PATH = "./healthy_ae.pth"
-
 
 class Classifier(pl.LightningModule):
     def __init__(self, hparams, autoencoder):
@@ -63,29 +61,29 @@ class Classifier(pl.LightningModule):
         self.autoencoder = autoencoder
 
         # number of neurons in last dense layers
-        self.nd = self.hparams.nf * 4 * (self.hparams.image_size // 4 ** 3) ** 2
+        self.nnd = self.hparams.nfc * 4 * (self.hparams.image_size // 4 ** 3) ** 2
 
         self.classifier = nn.Sequential(
             # input (nc) x 256 x 256
-            nn.Conv2d(self.hparams.nc, self.hparams.nf, 4, 2, 1),
-            nn.BatchNorm2d(self.hparams.nf),
+            nn.Conv2d(self.hparams.nc, self.hparams.nfc, 4, 2, 1),
+            nn.BatchNorm2d(self.hparams.nfc),
             nn.LeakyReLU(0.2, inplace=True),
             nn.MaxPool2d(2),
-            # input (nf) x 64 x 64
-            nn.Conv2d(self.hparams.nf, self.hparams.nf * 2, 4, 2, 1),
-            nn.BatchNorm2d(self.hparams.nf * 2),
+            # input (nfc) x 64 x 64
+            nn.Conv2d(self.hparams.nfc, self.hparams.nfc * 2, 4, 2, 1),
+            nn.BatchNorm2d(self.hparams.nfc * 2),
             nn.LeakyReLU(0.2, inplace=True),
             nn.MaxPool2d(2),
-            # input (nf*2) x 16 x 16
-            nn.Conv2d(self.hparams.nf * 2, self.hparams.nf * 4, 4, 2, 1),
-            nn.BatchNorm2d(self.hparams.nf * 4),
+            # input (nfc*2) x 16 x 16
+            nn.Conv2d(self.hparams.nfc * 2, self.hparams.nfc * 4, 4, 2, 1),
+            nn.BatchNorm2d(self.hparams.nfc * 4),
             nn.LeakyReLU(0.2, inplace=True),
             nn.MaxPool2d(2),
-            # input (nf*4) x 4 x 4
+            # input (nfc*4) x 4 x 4
             nn.Flatten(),
-            nn.Linear(self.nd, self.nd, bias=True),
-            nn.Linear(self.nd, self.nd, bias=True),
-            nn.Linear(self.nd, 3, bias=True),
+            nn.Linear(self.nnd, self.nnd, bias=True),
+            nn.Linear(self.nnd, self.nnd, bias=True),
+            nn.Linear(self.nnd, 3, bias=True),
             nn.Softmax(),
         )
 
@@ -100,33 +98,12 @@ class Classifier(pl.LightningModule):
         return {"reconstructed": reconstructed, "anomaly": anomaly, "prediction": prediction}
 
     def prepare_data(self):
-        """Loads and rebalances data.
-        """
 
-        transform = {
-            "train": transforms.Compose(
-                [
-                    transforms.RandomResizedCrop(self.hparams.image_size, scale=(0.8, 1.0)),
-                    transforms.RandomHorizontalFlip(),
-                    transforms.RandomRotation(degrees=5),
-                    transforms.ColorJitter(brightness=0.1, contrast=0.1),
-                    transforms.ToTensor(),
-                    transforms.Normalize(MEAN.tolist(), STD.tolist()),
-                ]
-            ),
-            "test": transforms.Compose(
-                [
-                    transforms.Resize(self.hparams.image_size),
-                    transforms.CenterCrop(self.hparams.image_size),
-                    transforms.ToTensor(),
-                    transforms.Normalize(MEAN.tolist(), STD.tolist()),
-                ]
-            ),
-        }
+        transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
 
         # retrieve COVIDx dataset from COVID-Net paper
         self.train_ds = COVIDx("train")
-        self.test_ds = COVIDx("test", transform=transform["test"])
+        self.test_ds = COVIDx("test", transform=transform.test)
 
         # configure sampler to rebalance training set
         weights = 1 / torch.Tensor(
@@ -145,8 +122,8 @@ class Classifier(pl.LightningModule):
         self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
 
         # apply correct transforms
-        self.train_ds.transform = transform["train"]
-        self.val_ds.transform = transform["test"]
+        self.train_ds.transform = transform.train
+        self.val_ds.transform = transform.test
 
         if self.hparams.debug:
             plot_dataset(self.train_ds)
@@ -254,8 +231,8 @@ def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name="classifier")
 
     # load pretrained autoencoder
-    autoencoder = HealhtyAE()
-    autoencoder.load_state_dict(torch.load(AE_PATH))
+    autoencoder = NormalAE(hparams)
+    autoencoder.load_state_dict(torch.load(hparams.ae_pth))
     autoencoder.eval()
 
     # create classifier
@@ -279,12 +256,21 @@ if __name__ == "__main__":
     parser.add_argument("--max_epochs", type=int, default=8, help="Number of maximum training epochs")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
     parser.add_argument("--nc", type=int, default=3, help="Number of channels in the training images")
-    parser.add_argument("--nf", type=int, default=8, help="Number of feature maps in classifier")
+    parser.add_argument("--nfc", type=int, default=8, help="Number of feature maps in classifier")
     parser.add_argument("--lr", type=float, default=0.0002, help="Learning rate for optimizer")
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
     parser.add_argument("--gpus", type=int, default=0, help="Number of GPUs. Use 0 for CPU mode")
     parser.add_argument("--debug", type=bool, default=True, help="Debug mode")
-
+    parser.add_argument("--ae_pth", type=str, default="models/autoencoder.pth", help="Path of trained autoencoder")
+    parser.add_argument("--nz", type=int, default=1024, help="Autoencoder param - Size of latent code")
+    parser.add_argument("--nfe", type=int, default=32, help="Autoencoder param - Number of feature maps in encoder")
+    parser.add_argument("--nfd", type=int, default=32, help="Autoencoder param - Number of feature maps in decoder")
+    parser.add_argument("--aug_min_scale", type=float, default=0.8, help="Minimum scale arg for RandomResizedCrop")
+    parser.add_argument("--aug_max_scale", type=float, default=1.0, help="Maximum scale arg for RandomResizedCrop")
+    parser.add_argument("--aug_rot", type=float, default=5, help="Degrees arg for RandomRotation")
+    parser.add_argument("--aug_bright", type=float, default=0.1, help="Brightness arg for ColorJitter")
+    parser.add_argument("--aug_cont", type=float, default=0.1, help="Contrast arg for ColorJitter")
+    
     args = parser.parse_args()
     main(args)
