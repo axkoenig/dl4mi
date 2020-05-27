@@ -61,7 +61,7 @@ class Classifier(pl.LightningModule):
         self.autoencoder = autoencoder
 
         # number of neurons in last dense layers
-        self.nnd = self.hparams.nfc * 4 * (self.hparams.image_size // 4 ** 3) ** 2
+        self.nnd = self.hparams.nfc * 4 * (self.hparams.img_size // 4 ** 3) ** 2
 
         self.classifier = nn.Sequential(
             # input (nc) x 256 x 256
@@ -239,7 +239,7 @@ def main(hparams):
     model = Classifier(hparams, autoencoder)
 
     # print detailed summary with estimated network size
-    summary(model, (hparams.nc, hparams.image_size, hparams.image_size), device="cpu")
+    summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
 
     trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs)
     trainer.fit(model)
@@ -261,8 +261,8 @@ if __name__ == "__main__":
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
     parser.add_argument("--gpus", type=int, default=0, help="Number of GPUs. Use 0 for CPU mode")
-    parser.add_argument("--debug", type=bool, default=True, help="Debug mode")
-    parser.add_argument("--ae_pth", type=str, default="models/autoencoder.pth", help="Path of trained autoencoder")
+    parser.add_argument("--debug", type=bool, default=False, help="Debug mode")
+    parser.add_argument("--ae_pth", type=str, default="models/autoencoder_27_05_2020_15:17:25.pth", help="Path of trained autoencoder")
     parser.add_argument("--nz", type=int, default=1024, help="Autoencoder param - Size of latent code")
     parser.add_argument("--nfe", type=int, default=32, help="Autoencoder param - Number of feature maps in encoder")
     parser.add_argument("--nfd", type=int, default=32, help="Autoencoder param - Number of feature maps in decoder")
