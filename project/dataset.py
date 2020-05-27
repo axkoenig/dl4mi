@@ -2,10 +2,10 @@ import os
 from collections import Counter
 
 import torch
-from torch.utils.data import Dataset
+from PIL import Image
 from torch import randperm
 from torch._utils import _accumulate
-from PIL import Image
+from torch.utils.data import Dataset
 
 
 def random_split(dataset, lengths):

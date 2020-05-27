@@ -1,13 +1,14 @@
 __author__ = 'Alexander Koenig, Li Nguyen'
 
-from argparse import ArgumentParser
 import datetime
 import os
+from argparse import ArgumentParser
 
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from pytorch_lightning import Trainer, loggers
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -197,8 +198,8 @@ class NormalAE(pl.LightningModule):
 
     def _shared_eval(self, batch, batch_idx, prefix="", plot=False):
         imgs, _ = batch
-        output = self(x)
-        loss = F.mse_loss(output, x)
+        output = self(imgs)
+        loss = F.mse_loss(output, imgs)
 
         # plot input, mixed and reconstructed images at beginning of epoch
         if plot and batch_idx == 0:
@@ -234,12 +235,12 @@ def main(hparams):
     trainer.fit(model)
     trainer.test(model)
 
-    timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H%M%S")
+    timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H:%M:%S")
     model_dir = "models"
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
     
-    save_pth = os.path.join(model_dir, "autoencoder" + timestamp + ".pth")
+    save_pth = os.path.join(model_dir, "autoencoder_" + timestamp + ".pth")
     torch.save(model.state_dict(), save_pth)
 
 if __name__ == "__main__":
