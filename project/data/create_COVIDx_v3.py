@@ -1,3 +1,7 @@
+"""
+Source
+https://github.com/lindawangg/COVID-Net/blob/master/create_COVIDx_v3.ipynb
+"""
 import numpy as np
 import pandas as pd
 import os
