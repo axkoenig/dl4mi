@@ -1,32 +1,34 @@
 __author__ = 'Alexander Koenig, Li Nguyen'
 
 from argparse import ArgumentParser
+import datetime
+import os
 
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from pytorch_lightning import Trainer, loggers
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Subset
-from torchvision.datasets import ImageFolder
 from torchsummary import summary
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
-from dataset import COVIDx
+from torchvision.datasets import ImageFolder
+
+from dataset import COVIDxNormal, random_split
+from transforms import Transform
 
 # normalization constants
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 STD = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 
-class HealhtyAE(pl.LightningModule):
+class NormalAE(pl.LightningModule):
     def __init__(self, hparams):
         super().__init__()
         self.hparams = hparams 
 
-        # Input Dimensions (3 x 224 x 224), Output Dimensions (2x2x1024)
         self.encoder = nn.Sequential(
             # input (nc) x 256 x 256
             nn.Conv2d(hparams.nc, hparams.nfe, 4, 2, 1),
@@ -52,15 +54,15 @@ class HealhtyAE(pl.LightningModule):
             nn.Conv2d(hparams.nfe*16, hparams.nfe*32, 4, 2, 1),
             nn.BatchNorm2d(hparams.nfe*32),
             nn.LeakyReLU(0.2, inplace=True),
-            # input (nfe*32) x 4 x 4, i.e. 2048 x 4 x 4
+            # input (nfe*32) x 4 x 4,
             nn.Conv2d(hparams.nfe*32, hparams.nz, 4, 2, 1),
             nn.BatchNorm2d(hparams.nz),
             nn.LeakyReLU(0.2, inplace=True),
-            # output 2x2x1024
+            # output (nz) x 2 x 2
         )
 
         self.decoder = nn.Sequential(             
-            # input (nz) x 2 x 2, i.e. 1024 x 2 x 2 in our case
+            # input (nz) x 2 x 2
             nn.ConvTranspose2d(hparams.nz, hparams.nfd * 32, 4, 1, 0, bias=False),
             nn.BatchNorm2d(hparams.nfd * 32),
             nn.ReLU(True),
@@ -112,20 +114,26 @@ class HealhtyAE(pl.LightningModule):
             nn.init.constant_(self.bias.data, 0)
 
     def prepare_data(self):
-        
-        transform = transforms.Compose([transforms.Resize(self.hparams.img_size), 
-                                        transforms.CenterCrop(self.hparams.img_size),
-                                        transforms.ToTensor(),
-                                        transforms.Normalize(MEAN.tolist(), STD.tolist()),
-                                        ])
-        
-        self.train_ds = COVIDx("train", transform=transform)
-        self.test_ds = COVIDx("test", transform=transform)
-        self.val_ds = COVIDx("test", transform=transform)
+
+        transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
+
+        # retrieve normal cases of COVIDx dataset from COVID-Net paper
+        self.train_ds = COVIDxNormal("train")
+        self.test_ds = COVIDxNormal("test", transform=transform.test)
+
+        # further split train into train and val
+        train_split = 0.95
+        train_size = int(train_split * len(self.train_ds))
+        val_size = len(self.train_ds) - train_size
+        self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
+
+        # apply correct transforms
+        self.train_ds.transform = transform.train
+        self.val_ds.transform = transform.test
 
     def train_dataloader(self):
         return DataLoader(
-            self.train_dataset, 
+            self.train_ds, 
             batch_size=self.hparams.batch_size, 
             shuffle=True, 
             num_workers=self.hparams.num_workers
@@ -133,28 +141,26 @@ class HealhtyAE(pl.LightningModule):
 
     def val_dataloader(self):
         return DataLoader(
-            self.val_dataset, 
-            batch_size=self.hparams.batch_size, 
-            shuffle=False, 
+            self.val_ds, 
+            batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers
         )
 
     def test_dataloader(self):
         return DataLoader(
-            self.test_dataset, 
-            batch_size=self.hparams.batch_size, 
-            shuffle=False, 
+            self.test_ds, 
+            batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers
     )
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2))
 
-    def save_images(self, x, output, name, n=8):
+    def plot(self, x, output, prefix, n=8):
         """Saves a plot of n images from input and output batch
         x         input batch
         output    output batch
-        name      name of plot
+        prefix    prefix of plot
         n         number of pictures to compare
         """
 
@@ -170,92 +176,78 @@ class HealhtyAE(pl.LightningModule):
         grid_top = vutils.make_grid(x, nrow=n)
         grid_bottom = vutils.make_grid(output, nrow=n)
         grid = torch.cat((grid_top, grid_bottom), 1)
+        
+        name = f"{prefix}_input_reconstr_images"
         self.logger.experiment.add_image(name, grid)
 
     def training_step(self, batch, batch_idx):
-
-        x, _ = batch
-        output = self(x)
-        loss = F.mse_loss(output, x)
-
-        # save input and output images at beginning of each epoch
-        if batch_idx == 0:
-            self.save_images(x, output, "train_input_output")
-        
-        logs = {"loss": loss}
-        return {"loss": loss, "log": logs}
+        return self._shared_eval(batch, batch_idx)
 
     def validation_step(self, batch, batch_idx):
-        x, _ = batch
-        output = self(x)
-        loss = F.mse_loss(output, x)
-        logs = {"val_loss": loss}
-        return {"val_loss": loss, "log": logs}
+        return self._shared_eval(batch, batch_idx, prefix="val", plot=True)
 
-    # compute statistics on the full dataset after an epoch of validation
     def validation_epoch_end(self, outputs):
-        print("compute statistics on the full dataset")
-        print(len(outputs))
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        logs = {'avg_val_loss': avg_loss}
-        return {'avg_val_loss': avg_loss, 'log': logs}
-    
-    def test_step(self, batch, batch_idx):
-        x, _ = batch
-        output = self(x)
-        loss = F.mse_loss(output, x)
+        return self._shared_eval_epoch_end(outputs, "val")
 
-        # save input and output images at beginning of epoch
-        if batch_idx == 0:
-            self.save_images(x, output, "test_input_output")
-        
-        logs = {"test_loss": loss}
-        return {"test_loss": loss, "log": logs}
+    def test_step(self, batch, batch_idx):
+        return self._shared_eval(batch, batch_idx, prefix="test", plot=True)
 
     def test_epoch_end(self, outputs):
-        avg_loss = torch.stack([x['test_loss'] for x in outputs]).mean()
-        logs = {'avg_test_loss': avg_loss}
-        return {'avg_test_loss': avg_loss, 'log': logs}
+        return self._shared_eval_epoch_end(outputs, "test")
+
+    def _shared_eval(self, batch, batch_idx, prefix="", plot=False):
+        imgs, _ = batch
+        output = self(x)
+        loss = F.mse_loss(output, x)
+
+        # plot input, mixed and reconstructed images at beginning of epoch
+        if plot and batch_idx == 0:
+            self.plot(imgs, output, prefix)
+
+        # add underscore to prefix
+        if prefix:
+            prefix = prefix + "_"
+
+        logs = {f"{prefix}loss": loss}
+        return {f"{prefix}loss": loss, "log": logs}
+
+    def _shared_eval_epoch_end(self, outputs, prefix):
+        avg_loss = torch.stack([x[f"{prefix}_loss"] for x in outputs]).mean()
+        logs = {f"avg_{prefix}_loss": avg_loss}
+        return {f"avg_{prefix}_loss": avg_loss, "log": logs}
         
 def main(hparams):
-    logger = loggers.TensorBoardLogger(hparams.log_dir, name="healhty_ae")
+    logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
 
-    model = HealhtyAE(hparams)
-    model.apply(HealhtyAE.weights_init)
+    model = NormalAE(hparams)
+    model.apply(NormalAE.weights_init)
 
     # print detailed summary with estimated network size
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
 
-    checkpoint_callback = ModelCheckpoint(
-        filepath="checkpoints",
-        save_top_k = True,
-        verbose=True,
-        monitor="val_loss",
-        mode="min",
-        prefix="",
-    )
-
     trainer = Trainer(
         logger=logger, 
         gpus=hparams.gpus, 
-        max_epochs=hparams.max_epochs, 
-        checkpoint_callback=checkpoint_callback,
-        default_save_path="checkpoints",
-        check_val_every_n_epoch=1,
-        show_progress_bar=True
+        max_epochs=hparams.max_epochs
     )
     
     trainer.fit(model)
     trainer.test(model)
 
-    PATH = './healthy_ae.pth'
-    torch.save(model.state_dict(), PATH)
+    timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H%M%S")
+    model_dir = "models"
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+    
+    save_pth = os.path.join(model_dir, "autoencoder" + timestamp + ".pth")
+    torch.save(model.state_dict(), save_pth)
 
 if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument("--data_root", type=str, default="data", help="Data root directory, where train and test folders are located")
     parser.add_argument("--log_dir", type=str, default="logs", help="Logging directory")
+    parser.add_argument("--log_name", type=str, default="autoencoder", help="Logging directory")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
     parser.add_argument("--img_size", type=int, default=256, help="Spatial size of training images")
     parser.add_argument("--max_epochs", type=int, default=8, help="Number of maximum training epochs")
@@ -263,11 +255,16 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.0002, help="Learning rate for optimizer")
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
-    parser.add_argument("--gpus", type=int, default=2, help="Number of GPUs. Use 0 for CPU mode")
+    parser.add_argument("--gpus", type=int, default=0, help="Number of GPUs. Use 0 for CPU mode")
     parser.add_argument("--nc", type=int, default=3, help="Number of channels in the training images, e.g. 3 for RGB images")
     parser.add_argument("--nz", type=int, default=1024, help="Size of latent codes after encoders, i.e. number of feature maps in latent representation")
     parser.add_argument("--nfe", type=int, default=32, help="Number of feature maps in encoders")
     parser.add_argument("--nfd", type=int, default=32, help="Number of of feature maps in decoder")
-    
+    parser.add_argument("--aug_min_scale", type=float, default=0.8, help="Minimum scale arg for RandomResizedCrop")
+    parser.add_argument("--aug_max_scale", type=float, default=1.0, help="Maximum scale arg for RandomResizedCrop")
+    parser.add_argument("--aug_rot", type=float, default=5, help="Degrees arg for RandomRotation")
+    parser.add_argument("--aug_bright", type=float, default=0.1, help="Brightness arg for ColorJitter")
+    parser.add_argument("--aug_cont", type=float, default=0.1, help="Contrast arg for ColorJitter")
+
     args = parser.parse_args()
     main(args)
