@@ -12,7 +12,7 @@ class Transform:
         self.train = transforms.Compose(
             [
                 transforms.RandomResizedCrop(
-                    hparams.image_size,
+                    hparams.img_size,
                     scale=(hparams.aug_min_scale, hparams.aug_max_scale),
                 ),
                 transforms.RandomHorizontalFlip(),
@@ -27,8 +27,8 @@ class Transform:
 
         self.test = transforms.Compose(
             [
-                transforms.Resize(hparams.image_size),
-                transforms.CenterCrop(hparams.image_size),
+                transforms.Resize(hparams.img_size),
+                transforms.CenterCrop(hparams.img_size),
                 transforms.ToTensor(),
                 transforms.Normalize(self.mean, self.std),
             ]
