@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 
 import pytorch_lightning as pl
 import torch
+import torch.multiprocessing
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
@@ -219,7 +220,8 @@ class NormalAE(pl.LightningModule):
         
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
-
+    torch.multiprocessing.set_sharing_strategy("file_system")
+    
     model = NormalAE(hparams)
     model.apply(NormalAE.weights_init)
 

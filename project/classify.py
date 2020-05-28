@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
+import torch.multiprocessing
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
@@ -229,7 +230,8 @@ class Classifier(pl.LightningModule):
 
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name="classifier")
-
+    torch.multiprocessing.set_sharing_strategy("file_system")
+    
     # load pretrained autoencoder
     autoencoder = NormalAE(hparams)
     autoencoder.load_state_dict(torch.load(hparams.ae_pth))
