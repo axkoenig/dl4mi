@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader, Subset
 from torchsummary import summary
 from torchvision.datasets import ImageFolder
 
-from dataset import COVIDxNormal, random_split
+from data import COVIDxNormal, random_split
 from transforms import Transform
 
 # normalization constants
@@ -119,8 +119,8 @@ class NormalAE(pl.LightningModule):
         transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
 
         # retrieve normal cases of COVIDx dataset from COVID-Net paper
-        self.train_ds = COVIDxNormal("train")
-        self.test_ds = COVIDxNormal("test", transform=transform.test)
+        self.train_ds = COVIDxNormal("train", self.hparams.data_root)
+        self.test_ds = COVIDxNormal("test", self.hparams.data_root, transform=transform.test)
 
         # further split train into train and val
         train_split = 0.95

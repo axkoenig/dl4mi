@@ -52,14 +52,14 @@ class TransformableSubset(Dataset):
 
 
 class COVIDx(Dataset):
-    def __init__(self, mode, root_dir="./data", transform=None):
+    def __init__(self, mode, data_root, dataset_root="dataset", transform=None):
 
-        self.img_dir = os.path.join(root_dir, mode)
+        self.img_dir = os.path.join(data_root, mode)
         self.mapping = {"normal": 0, "pneumonia": 1, "COVID-19": 2}
         self.transform = transform
 
-        train_file = os.path.join(root_dir, "train_COVIDx3.txt")
-        test_file = os.path.join(root_dir, "test_COVIDx3.txt")
+        train_file = os.path.join(dataset_root, "train_COVIDx3.txt")
+        test_file = os.path.join(dataset_root, "test_COVIDx3.txt")
 
         if mode == "train":
             self.paths, self.labels = self.read_file(train_file)
@@ -83,7 +83,7 @@ class COVIDx(Dataset):
 
         img_name = os.path.join(self.img_dir, self.paths[idx])
         if not os.path.exists(img_name):
-            Exception(f"Image {img_path} does not exist!")
+            Exception(f"Image {img_name} does not exist!")
 
         image = Image.open(img_name).convert("RGB")
         label = torch.tensor(self.mapping[self.labels[idx]], dtype=torch.long)
@@ -107,13 +107,13 @@ class COVIDx(Dataset):
 
 
 class COVIDxNormal(Dataset):
-    def __init__(self, mode, root_dir="./data", transform=None):
+    def __init__(self, mode, data_root, dataset_root="dataset", transform=None):
 
-        self.img_dir = os.path.join(root_dir, mode)
+        self.img_dir = os.path.join(data_root, mode)
         self.transform = transform
 
-        train_file = os.path.join(root_dir, "train_COVIDx3.txt")
-        test_file = os.path.join(root_dir, "test_COVIDx3.txt")
+        train_file = os.path.join(dataset_root, "train_COVIDx3.txt")
+        test_file = os.path.join(dataset_root, "test_COVIDx3.txt")
 
         if mode == "train":
             self.paths, self.labels = self.read_file(train_file)
@@ -136,7 +136,7 @@ class COVIDxNormal(Dataset):
 
         img_name = os.path.join(self.img_dir, self.paths[idx])
         if not os.path.exists(img_name):
-            Exception(f"Image {img_path} does not exist!")
+            Exception(f"Image {img_name} does not exist!")
 
         image = Image.open(img_name).convert("RGB")
         label = torch.tensor(0, dtype=torch.long)

@@ -16,7 +16,7 @@ from torchvision import utils
 from torchvision.datasets import ImageFolder
 
 from autoencoder import NormalAE
-from dataset import COVIDx, random_split
+from data import COVIDx, random_split
 from transforms import Transform
 
 
@@ -102,8 +102,8 @@ class Classifier(pl.LightningModule):
         transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
 
         # retrieve COVIDx dataset from COVID-Net paper
-        self.train_ds = COVIDx("train")
-        self.test_ds = COVIDx("test", transform=transform.test)
+        self.train_ds = COVIDx("train", self.hparams.data_root)
+        self.test_ds = COVIDx("test", self.hparams.data_root, transform=transform.test)
 
         # configure sampler to rebalance training set
         weights = 1 / torch.Tensor(
