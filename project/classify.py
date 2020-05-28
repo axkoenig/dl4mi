@@ -103,8 +103,8 @@ class Classifier(pl.LightningModule):
         transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
 
         # retrieve COVIDx dataset from COVID-Net paper
-        self.train_ds = COVIDx("train", self.hparams.data_root)
-        self.test_ds = COVIDx("test", self.hparams.data_root, transform=transform.test)
+        self.train_ds = COVIDx("train", self.hparams.data_root, self.hparams.dataset_dir)
+        self.test_ds = COVIDx("test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test)
 
         # configure sampler to rebalance training set
         weights = 1 / torch.Tensor(
@@ -252,6 +252,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument("--data_root", type=str, default="./data", help="Data root directory")
+    parser.add_argument("--dataset_dir", type=str, default="./dataset", help="Dataset root directory with txt files")
     parser.add_argument("--log_dir", type=str, default="./logs", help="Logging directory")
     parser.add_argument("--ae_pth", type=str, default="models/autoencoder_27_05_2020_15:17:25.pth", help="Path of trained autoencoder")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")

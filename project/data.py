@@ -52,14 +52,14 @@ class TransformableSubset(Dataset):
 
 
 class COVIDx(Dataset):
-    def __init__(self, mode, data_root, dataset_root="./dataset", transform=None):
+    def __init__(self, mode, data_root, dataset_dir, transform=None):
 
         self.img_dir = os.path.join(data_root, mode)
         self.mapping = {"normal": 0, "pneumonia": 1, "COVID-19": 2}
         self.transform = transform
 
-        train_file = os.path.join(dataset_root, "train_COVIDx3.txt")
-        test_file = os.path.join(dataset_root, "test_COVIDx3.txt")
+        train_file = os.path.join(dataset_dir, "train_COVIDx3.txt")
+        test_file = os.path.join(dataset_dir, "test_COVIDx3.txt")
 
         if mode == "train":
             self.paths, self.labels = self.read_file(train_file)
@@ -107,13 +107,13 @@ class COVIDx(Dataset):
 
 
 class COVIDxNormal(Dataset):
-    def __init__(self, mode, data_root, dataset_root="./dataset", transform=None):
+    def __init__(self, mode, data_root, dataset_dir, transform=None):
 
         self.img_dir = os.path.join(data_root, mode)
         self.transform = transform
 
-        train_file = os.path.join(dataset_root, "train_COVIDx3.txt")
-        test_file = os.path.join(dataset_root, "test_COVIDx3.txt")
+        train_file = os.path.join(dataset_dir, "train_COVIDx3.txt")
+        test_file = os.path.join(dataset_dir, "test_COVIDx3.txt")
 
         if mode == "train":
             self.paths, self.labels = self.read_file(train_file)

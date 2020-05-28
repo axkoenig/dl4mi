@@ -120,8 +120,8 @@ class NormalAE(pl.LightningModule):
         transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
 
         # retrieve normal cases of COVIDx dataset from COVID-Net paper
-        self.train_ds = COVIDxNormal("train", self.hparams.data_root)
-        self.test_ds = COVIDxNormal("test", self.hparams.data_root, transform=transform.test)
+        self.train_ds = COVIDxNormal("train", self.hparams.data_root, self.hparams.dataset_dir)
+        self.test_ds = COVIDxNormal("test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test)
 
         # further split train into train and val
         train_split = 0.95
@@ -248,6 +248,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument("--data_root", type=str, default="data", help="Data root directory, where train and test folders are located")
+    parser.add_argument("--dataset_dir", type=str, default="./dataset", help="Dataset root directory with txt files")
     parser.add_argument("--log_dir", type=str, default="logs", help="Logging directory")
     parser.add_argument("--model_dir", type=str, default="models", help="Directory for saving trained models")
     parser.add_argument("--log_name", type=str, default="autoencoder", help="Logging directory")
