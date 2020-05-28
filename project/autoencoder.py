@@ -238,11 +238,10 @@ def main(hparams):
     trainer.test(model)
 
     timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H:%M:%S")
-    model_dir = "models"
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir)
+    if not os.path.exists(hparams.model_dir):
+        os.makedirs(hparams.model_dir)
     
-    save_pth = os.path.join(model_dir, "autoencoder_" + timestamp + ".pth")
+    save_pth = os.path.join(hparams.model_dir, "autoencoder_" + timestamp + ".pth")
     torch.save(model.state_dict(), save_pth)
 
 if __name__ == "__main__":
