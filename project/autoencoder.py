@@ -250,6 +250,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--data_root", type=str, default="data", help="Data root directory, where train and test folders are located")
     parser.add_argument("--log_dir", type=str, default="logs", help="Logging directory")
+    parser.add_argument("--model_dir", type=str, default="models", help="Directory for saving trained models")
     parser.add_argument("--log_name", type=str, default="autoencoder", help="Logging directory")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
     parser.add_argument("--img_size", type=int, default=256, help="Spatial size of training images")
@@ -263,10 +264,10 @@ if __name__ == "__main__":
     parser.add_argument("--nz", type=int, default=1024, help="Size of latent codes after encoders, i.e. number of feature maps in latent representation")
     parser.add_argument("--nfe", type=int, default=32, help="Number of feature maps in encoders")
     parser.add_argument("--nfd", type=int, default=32, help="Number of of feature maps in decoder")
-    parser.add_argument("--aug_min_scale", type=float, default=0.8, help="Minimum scale arg for RandomResizedCrop")
+    parser.add_argument("--aug_min_scale", type=float, default=0.75, help="Minimum scale arg for RandomResizedCrop")
     parser.add_argument("--aug_max_scale", type=float, default=1.0, help="Maximum scale arg for RandomResizedCrop")
     parser.add_argument("--aug_rot", type=float, default=5, help="Degrees arg for RandomRotation")
-    parser.add_argument("--aug_bright", type=float, default=0.1, help="Brightness arg for ColorJitter")
+    parser.add_argument("--aug_bright", type=float, default=0.2, help="Brightness arg for ColorJitter")
     parser.add_argument("--aug_cont", type=float, default=0.1, help="Contrast arg for ColorJitter")
 
     args = parser.parse_args()
