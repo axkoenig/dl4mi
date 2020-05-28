@@ -52,7 +52,7 @@ class TransformableSubset(Dataset):
 
 
 class COVIDx(Dataset):
-    def __init__(self, mode, data_root, dataset_root="dataset", transform=None):
+    def __init__(self, mode, data_root, dataset_root="./dataset", transform=None):
 
         self.img_dir = os.path.join(data_root, mode)
         self.mapping = {"normal": 0, "pneumonia": 1, "COVID-19": 2}
@@ -107,7 +107,7 @@ class COVIDx(Dataset):
 
 
 class COVIDxNormal(Dataset):
-    def __init__(self, mode, data_root, dataset_root="dataset", transform=None):
+    def __init__(self, mode, data_root, dataset_root="./dataset", transform=None):
 
         self.img_dir = os.path.join(data_root, mode)
         self.transform = transform
