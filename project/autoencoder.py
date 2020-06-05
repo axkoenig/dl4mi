@@ -21,6 +21,7 @@ from torchvision.datasets import ImageFolder
 
 from data import COVIDxNormal, random_split
 from transforms import Transform
+from vgg import Vgg16
 
 # normalization constants
 MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
@@ -99,6 +100,10 @@ class NormalAE(pl.LightningModule):
             nn.Tanh()
             # output (nc) x 256 x 256
         )
+
+        self.vgg = Vgg16()
+        if hparams.gpus > 0:
+            self.vgg.cuda()
 
     def forward(self, x):
         x = self.encoder(x)
@@ -200,7 +205,13 @@ class NormalAE(pl.LightningModule):
     def _shared_eval(self, batch, batch_idx, prefix="", plot=False):
         imgs, _ = batch
         output = self(imgs)
-        loss = F.mse_loss(output, imgs)
+
+        # get original and reconstructed vgg features
+        orig_features = self.vgg(imgs)
+        recon_features = self.vgg(output)
+
+        # calculate vgg loss
+        loss = F.mse_loss(orig_features[1], recon_features[1])
 
         # plot input, mixed and reconstructed images at beginning of epoch
         if plot and batch_idx == 0:
