@@ -10,6 +10,7 @@
 *.jpeg
 *__pycache__/
 *.pth
+*.icloud
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
