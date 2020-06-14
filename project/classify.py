@@ -217,14 +217,13 @@ class Classifier(pl.LightningModule):
         return {f"avg_{prefix}_loss": avg_loss, "log": logs}
 
 
+# TODO train with kfold split
 # TODO increase capability of autoencoder
-# TODO combine datasets classes
-# TODO get validation set to work --> kfold cross val
-# TODO use Unet as autoencoder
-# TODO use resnet 
+# TODO use Unet as autoencoder -> https://github.com/mateuszbuda/brain-segmentation-pytorch/blob/master/unet.py
+# TODO use resnet
 
 def main(hparams):
-    logger = loggers.TensorBoardLogger(hparams.log_dir, name="classifier")
+    logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
     torch.multiprocessing.set_sharing_strategy("file_system")
     
     # load pretrained autoencoder
@@ -297,6 +296,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_root", type=str, default="./data", help="Data root directory")
     parser.add_argument("--dataset_dir", type=str, default="./dataset", help="Dataset root directory with txt files")
     parser.add_argument("--log_dir", type=str, default="./logs", help="Logging directory")
+    parser.add_argument("--log_name", type=str, default="classifier", help="Name of logging session")
     parser.add_argument("--ae_pth", type=str, default="models/autoencoder_30_05_2020_16_09_52_bs16_ep40_tl0.0064.pth", help="Path of trained autoencoder")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
     parser.add_argument("--img_size", type=int, default=256, help="Spatial size of training images")
