@@ -19,6 +19,7 @@ from torchvision.datasets import ImageFolder
 from autoencoder import NormalAE
 from data import COVIDx, random_split
 from transforms import Transform
+from utils import calc_metrics
 
 
 def plot_dataset(dataset, n=6):
@@ -60,6 +61,10 @@ class Classifier(pl.LightningModule):
         super().__init__()
         self.hparams = hparams
         self.autoencoder = autoencoder
+
+        # variables to save model predictions
+        self.gt = []
+        self.pr = []
 
         # number of neurons in last dense layers
         self.nnd = self.hparams.nfc * 4 * (self.hparams.img_size // 4 ** 3) ** 2
@@ -103,7 +108,7 @@ class Classifier(pl.LightningModule):
         transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
 
         # retrieve COVIDx dataset from COVID-Net paper
-        self.train_ds = COVIDx("train", self.hparams.data_root, self.hparams.dataset_dir)
+        self.train_ds = COVIDx("train", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.train)
         self.test_ds = COVIDx("test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test)
 
         # configure sampler to rebalance training set
@@ -114,13 +119,15 @@ class Classifier(pl.LightningModule):
                 self.train_ds.counter["COVID-19"],
             ]
         )
-        self.sampler = WeightedRandomSampler(weights, self.hparams.batch_size)
+        sample_weights = weights[self.train_ds.targets]
+        self.sampler = WeightedRandomSampler(sample_weights, self.hparams.batch_size)
 
         # further split train into train and val
-        train_split = 0.95
-        train_size = int(train_split * len(self.train_ds))
-        val_size = len(self.train_ds) - train_size
-        self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
+        # train_split = 0.95
+        # train_size = int(train_split * len(self.train_ds))
+        # val_size = len(self.train_ds) - train_size
+        # self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
+        self.val_ds = self.test_ds
 
         # apply correct transforms
         self.train_ds.transform = transform.train
@@ -171,7 +178,7 @@ class Classifier(pl.LightningModule):
         denormalization = transforms.Normalize((-MEAN / STD).tolist(), (1.0 / STD).tolist())
         x = [denormalization(i) for i in x[:n]]
         r = [denormalization(i) for i in r[:n]]
-        # a = [denormalization(i) for i in a[:n]]
+        a = [denormalization(i) for i in a[:n]]
 
         # create empty plot and send to device
         plot = torch.tensor([], device=x[0].device)
@@ -191,7 +198,12 @@ class Classifier(pl.LightningModule):
         self.logger.experiment.add_image(name, plot)
 
     def training_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx)
+        imgs, labels = batch
+        out = self(imgs)
+        loss = F.cross_entropy(out["prediction"], labels)
+
+        logs = {f"loss": loss}
+        return {f"loss": loss, "log": logs}
 
     def validation_step(self, batch, batch_idx):
         return self._shared_eval(batch, batch_idx, prefix="val", plot=True)
@@ -209,11 +221,23 @@ class Classifier(pl.LightningModule):
 
         imgs, labels = batch
         out = self(imgs)
-        loss = F.cross_entropy(out["prediction"], labels)
+        predictions = out["prediction"]
+        loss = F.cross_entropy(predictions, labels)
 
-        # plot input, mixed and reconstructed images at beginning of epoch
-        if plot and batch_idx == 0:
-            self.plot(imgs, out["reconstructed"], out["anomaly"], prefix)
+        # at beginning of epoch
+        if batch_idx == 0:
+
+            # reset predictions from last epoch
+            self.gt = []
+            self.pr = []
+            
+            if plot:
+                self.plot(imgs, out["reconstructed"], out["anomaly"], prefix)
+            
+        # save labels and predictions for evaluation
+        max_indices = torch.max(predictions, 1).indices
+        self.gt = self.gt + labels.tolist()
+        self.pr = self.pr + max_indices.tolist()
 
         # add underscore to prefix
         if prefix:
@@ -225,8 +249,20 @@ class Classifier(pl.LightningModule):
     def _shared_eval_epoch_end(self, outputs, prefix):
         avg_loss = torch.stack([x[f"{prefix}_loss"] for x in outputs]).mean()
         logs = {f"avg_{prefix}_loss": avg_loss}
+        metrics = calc_metrics(self.gt, self.pr, verbose=True)
+        
+        # tensorboard only saves scalars
+        loggable_metrics = ["accuracy", "recall", "precision"]
+        metrics = {key: metrics[key] for key in loggable_metrics}
+        logs.update(metrics)
+
         return {f"avg_{prefix}_loss": avg_loss, "log": logs}
 
+# TODO increase capability of autoencoder
+# TODO combine datasets classes
+# TODO get validation set to work --> kfold cross val
+# TODO use Unet as autoencoder
+# TODO use resnet 
 
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name="classifier")
@@ -234,8 +270,13 @@ def main(hparams):
     
     # load pretrained autoencoder
     autoencoder = NormalAE(hparams)
-    autoencoder.load_state_dict(torch.load(hparams.ae_pth))
+    autoencoder.load_state_dict(torch.load(hparams.ae_pth, map_location=torch.device("cpu")))
     autoencoder.eval()
+
+    # freeze autoencoder weights
+    for c in autoencoder.children():
+        for p in c.parameters():
+            p.requires_grad = False
 
     # create classifier
     model = Classifier(hparams, autoencoder)
@@ -243,7 +284,8 @@ def main(hparams):
     # print detailed summary with estimated network size
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
 
-    trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs)
+    # TODO remove val_percent_check
+    trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs, nb_sanity_val_steps=0)
     trainer.fit(model)
     trainer.test(model)
 
@@ -254,10 +296,10 @@ if __name__ == "__main__":
     parser.add_argument("--data_root", type=str, default="./data", help="Data root directory")
     parser.add_argument("--dataset_dir", type=str, default="./dataset", help="Dataset root directory with txt files")
     parser.add_argument("--log_dir", type=str, default="./logs", help="Logging directory")
-    parser.add_argument("--ae_pth", type=str, default="models/autoencoder_27_05_2020_15:17:25.pth", help="Path of trained autoencoder")
+    parser.add_argument("--ae_pth", type=str, default="models/autoencoder_30_05_2020_16_09_52_bs16_ep40_tl0.0064.pth", help="Path of trained autoencoder")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
     parser.add_argument("--img_size", type=int, default=256, help="Spatial size of training images")
-    parser.add_argument("--max_epochs", type=int, default=8, help="Number of maximum training epochs")
+    parser.add_argument("--max_epochs", type=int, default=30, help="Number of maximum training epochs")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
     parser.add_argument("--nc", type=int, default=3, help="Number of channels in the training images")
     parser.add_argument("--nfc", type=int, default=8, help="Number of feature maps in classifier")

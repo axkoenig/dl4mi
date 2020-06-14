@@ -71,6 +71,9 @@ class COVIDx(Dataset):
         # count number of images per class
         self.counter = Counter(self.labels)
 
+        # get targets in form [0, 1, 2, 1, ...]
+        self.targets = [self.mapping[l] for l in self.labels]
+
         print(f"Class distribution in COVIDx {mode} set: {self.counter}")
         print(f"Length of COVIDx {mode} set: {len(self.paths)}")
 
