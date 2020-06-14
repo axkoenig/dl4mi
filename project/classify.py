@@ -15,9 +15,10 @@ from torch.utils.data.sampler import WeightedRandomSampler
 from torchsummary import summary
 from torchvision import utils
 from torchvision.datasets import ImageFolder
+from sklearn.model_selection import KFold
 
 from autoencoder import NormalAE
-from data import COVIDx, random_split
+from data import COVIDx, TransformableSubset
 from transforms import Transform
 from utils import calc_metrics
 
@@ -103,55 +104,12 @@ class Classifier(pl.LightningModule):
 
         return {"reconstructed": reconstructed, "anomaly": anomaly, "prediction": prediction}
 
-    def prepare_data(self):
-
-        transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
-
-        # retrieve COVIDx dataset from COVID-Net paper
-        self.train_ds = COVIDx("train", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.train)
-        self.test_ds = COVIDx("test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test)
-
-        # configure sampler to rebalance training set
-        weights = 1 / torch.Tensor(
-            [
-                self.train_ds.counter["normal"],
-                self.train_ds.counter["pneumonia"],
-                self.train_ds.counter["COVID-19"],
-            ]
-        )
-        sample_weights = weights[self.train_ds.targets]
-        self.sampler = WeightedRandomSampler(sample_weights, self.hparams.batch_size)
-
-        # further split train into train and val
-        # train_split = 0.95
-        # train_size = int(train_split * len(self.train_ds))
-        # val_size = len(self.train_ds) - train_size
-        # self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
-        self.val_ds = self.test_ds
-
-        # apply correct transforms
-        self.train_ds.transform = transform.train
-        self.val_ds.transform = transform.test
-
-        if self.hparams.debug:
-            plot_dataset(self.train_ds)
-
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_ds,
-            batch_size=self.hparams.batch_size,
-            sampler=self.sampler,
-            num_workers=self.hparams.num_workers,
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers,
-        )
-
     def test_dataloader(self):
+        transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
+        covidx_test = COVIDx("test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test)
+
         return DataLoader(
-            self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers,
+            covidx_test, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers,
         )
 
     def configure_optimizers(self):
@@ -258,6 +216,7 @@ class Classifier(pl.LightningModule):
 
         return {f"avg_{prefix}_loss": avg_loss, "log": logs}
 
+
 # TODO increase capability of autoencoder
 # TODO combine datasets classes
 # TODO get validation set to work --> kfold cross val
@@ -283,15 +242,57 @@ def main(hparams):
 
     # print detailed summary with estimated network size
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
+    
+    # retrieve COVIDx_v3 dataset from COVID-Net paper
+    covidx_train = COVIDx("train", hparams.data_root, hparams.dataset_dir)
+    transform = Transform(MEAN.tolist(), STD.tolist(), hparams)
 
-    # TODO remove val_percent_check
-    trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs, nb_sanity_val_steps=0)
-    trainer.fit(model)
+    if hparams.debug:
+        plot_dataset(covidx_train)
+
+    # k fold cross validation
+    kfold = KFold(n_splits=hparams.folds)
+
+    for fold, (train_idx, valid_idx) in enumerate(kfold.split(covidx_train)):
+        print(f"Training {fold} of {hparams.folds} folds ...")
+
+        # split covidx_train further into train and val data 
+        train_ds = TransformableSubset(covidx_train, train_idx, transform=transform.train)
+        val_ds = TransformableSubset(covidx_train, valid_idx, transform=transform.test)
+        
+        # get labels in subset for rebalancing
+        train_labels = [covidx_train.targets[i] for i in train_idx]
+
+        # configure sampler to rebalance training set
+        weights = 1 / torch.Tensor(
+            [
+                train_labels.count(0),
+                train_labels.count(1),
+                train_labels.count(2),
+            ]
+        )
+        sample_weights = weights[train_labels]
+        sampler = WeightedRandomSampler(sample_weights, hparams.batch_size)
+
+        train_dl = DataLoader(
+            train_ds,
+            batch_size=hparams.batch_size,
+            sampler=sampler,
+            num_workers=hparams.num_workers,
+        )
+
+        val_dl = DataLoader(
+            val_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,
+        )
+        
+        trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs, nb_sanity_val_steps=hparams.nb_sanity_val_steps)
+        trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
+    
     trainer.test(model)
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser("Trains a classifier for COVID-19 detection")
 
     parser.add_argument("--data_root", type=str, default="./data", help="Data root directory")
     parser.add_argument("--dataset_dir", type=str, default="./dataset", help="Dataset root directory with txt files")
@@ -299,7 +300,7 @@ if __name__ == "__main__":
     parser.add_argument("--ae_pth", type=str, default="models/autoencoder_30_05_2020_16_09_52_bs16_ep40_tl0.0064.pth", help="Path of trained autoencoder")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
     parser.add_argument("--img_size", type=int, default=256, help="Spatial size of training images")
-    parser.add_argument("--max_epochs", type=int, default=30, help="Number of maximum training epochs")
+    parser.add_argument("--max_epochs", type=int, default=4, help="Number of maximum training epochs")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
     parser.add_argument("--nc", type=int, default=3, help="Number of channels in the training images")
     parser.add_argument("--nfc", type=int, default=8, help="Number of feature maps in classifier")
@@ -316,6 +317,8 @@ if __name__ == "__main__":
     parser.add_argument("--aug_rot", type=float, default=5, help="Degrees arg for RandomRotation")
     parser.add_argument("--aug_bright", type=float, default=0.2, help="Brightness arg for ColorJitter")
     parser.add_argument("--aug_cont", type=float, default=0.1, help="Contrast arg for ColorJitter")
+    parser.add_argument("--folds", type=int, default=10, help="How many folds to use for cross validation")
+    parser.add_argument("--nb_sanity_val_steps", type=int, default=0, help="Number of sanity val steps")
     
     args = parser.parse_args()
     main(args)

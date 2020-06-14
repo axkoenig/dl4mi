@@ -6,7 +6,7 @@ from PIL import Image
 from torch import randperm
 from torch._utils import _accumulate
 from torch.utils.data import Dataset
-
+from sklearn.utils import shuffle
 
 def random_split(dataset, lengths):
     """
@@ -63,6 +63,9 @@ class COVIDx(Dataset):
 
         if mode == "train":
             self.paths, self.labels = self.read_file(train_file)
+
+            # training set must be shuffled before cross validation
+            self.paths, self.labels = shuffle(self.paths, self.labels)
         elif mode == "test":
             self.paths, self.labels = self.read_file(test_file)
         else:
