@@ -1,3 +1,5 @@
+import datetime
+import os 
 from argparse import ArgumentParser
 
 import matplotlib.pyplot as plt
@@ -29,10 +31,9 @@ STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
 
 
 class Classifier(pl.LightningModule):
-    def __init__(self, hparams, autoencoder):
+    def __init__(self, hparams):
         super().__init__()
         self.hparams = hparams
-        self.autoencoder = autoencoder
 
         # variables to save model predictions
         self.gt_train = []
@@ -51,19 +52,15 @@ class Classifier(pl.LightningModule):
         self.classifier.fc = nn.Linear(num_features, num_classes)
 
     def forward(self, x):
-        # TODO revert!
-        # create anomaly map
-        # reconstructed = self.autoencoder(x)
-        reconstructed = x
-        anomaly = x - reconstructed
-
+    
         # classify anomaly map
         prediction = self.classifier(x)
         prediction = F.softmax(prediction)
 
+        # TODO: Attention (for now we disregard "reconstructed" and "anomaly") 
         return {
-            "reconstructed": reconstructed,
-            "anomaly": anomaly,
+            "reconstructed": x,
+            "anomaly": x,
             "prediction": prediction,
         }
 
@@ -154,13 +151,13 @@ class Classifier(pl.LightningModule):
         return {"train/avg_loss": avg_loss, "log": logs}
 
     def validation_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, prefix="val", plot=True)
+        return self._shared_eval(batch, batch_idx, prefix="val")
 
     def validation_epoch_end(self, outputs):
         return self._shared_eval_epoch_end(outputs, "val")
 
     def test_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, prefix="test", plot=True)
+        return self._shared_eval(batch, batch_idx, prefix="test")
 
     def test_epoch_end(self, outputs):
         return self._shared_eval_epoch_end(outputs, "test")
@@ -209,21 +206,15 @@ def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
     torch.multiprocessing.set_sharing_strategy("file_system")
 
-    # load pretrained autoencoder
-    autoencoder = NormalAE(hparams)
-    autoencoder.load_state_dict(torch.load(hparams.ae_pth, map_location=torch.device("cpu")))
-    autoencoder.eval()
-    freeze(autoencoder)
-
     # create classifier and print summary
-    model = Classifier(hparams, autoencoder)
+    model = Classifier(hparams)
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
     
     trainer = Trainer(
         logger=logger,
         gpus=hparams.gpus,
         max_epochs=hparams.max_epochs,
-        nb_sanity_val_steps=hparams.nb_sanity_val_steps,
+        num_sanity_val_steps=hparams.num_sanity_val_steps,
         weights_summary=None,
     )
     
@@ -238,7 +229,7 @@ def main(hparams):
     kfold = KFold(n_splits=hparams.folds)
 
     for fold, (train_idx, valid_idx) in enumerate(kfold.split(covidx_train)):
-        print(f"Training {fold} of {hparams.folds} folds ...")
+        print(f"training {fold} of {hparams.folds} folds ...")
 
         # split covidx_train further into train and val data
         train_ds = TransformableSubset(covidx_train, train_idx, transform=transform.train)
@@ -261,6 +252,14 @@ def main(hparams):
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
     trainer.test(model)
+
+    # save model 
+    timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H%M%S")
+    save_path = os.path.join(hparams.models_dir, hparams.log_name + "_" + timestamp + ".pth") 
+    print(f"saving model to {save_path}...")
+    torch.save(model.state_dict(), save_path)
+
+    print("done. have a good day!")
 
 
 if __name__ == "__main__":

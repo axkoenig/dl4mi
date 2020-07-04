@@ -7,8 +7,9 @@ def parse_args():
 
     parser.add_argument("--data_root", type=str, default="./data", help="Data root directory")
     parser.add_argument("--dataset_dir", type=str, default="./dataset", help="Dataset root directory with txt files")
+    parser.add_argument("--models_dir", type=str, default="./models", help="Name of models directory for saving")
     parser.add_argument("--log_dir", type=str, default="./logs", help="Logging directory")
-    parser.add_argument("--log_name", type=str, default="classifier", help="Name of logging session")
+    parser.add_argument("--log_name", type=str, default="test", help="Name of logging session")
     parser.add_argument("--ae_pth", type=str, default="models/autoencoder_30_05_2020_16_09_52_bs16_ep40_tl0.0064.pth", help="Path of trained autoencoder")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
     parser.add_argument("--img_size", type=int, default=224, help="Spatial size of training images")
@@ -30,7 +31,7 @@ def parse_args():
     parser.add_argument("--aug_bright", type=float, default=0.2, help="Brightness arg for ColorJitter")
     parser.add_argument("--aug_cont", type=float, default=0.1, help="Contrast arg for ColorJitter")
     parser.add_argument("--folds", type=int, default=10, help="How many folds to use for cross validation")
-    parser.add_argument("--nb_sanity_val_steps", type=int, default=0, help="Number of sanity val steps")
+    parser.add_argument("--num_sanity_val_steps", type=int, default=0, help="Number of sanity val steps")
     
     args = parser.parse_args()
     return args
