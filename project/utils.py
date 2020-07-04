@@ -1,7 +1,9 @@
+import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import torchvision.transforms as transforms
 from sklearn import metrics
+from torch.utils.data.sampler import WeightedRandomSampler
 
 def calc_metrics(labels, predictions, verbose=False):
     """Calculates evaluation metrics.
@@ -72,3 +74,22 @@ def plot_dataset(dataset, MEAN, STD, n=6):
 def freeze(model):
     for param in model.parameters():
         param.requires_grad = False
+
+def get_train_sampler(dataset, indices):
+
+    # get labels in subset for rebalancing
+    labels = [dataset.targets[i] for i in indices]
+
+    # configure sampler to rebalance training set
+    weights = 1 / torch.Tensor(
+        [
+            labels.count(0),
+            labels.count(1),
+            labels.count(2),
+        ]
+    )
+    sample_weights = weights[labels]
+    num_samples = len(indices)
+    sampler = WeightedRandomSampler(sample_weights, num_samples)
+    
+    return sampler

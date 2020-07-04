@@ -11,7 +11,6 @@ import torchvision.transforms as transforms
 from pytorch_lightning import Trainer, loggers
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset, Subset
-from torch.utils.data.sampler import WeightedRandomSampler
 from torchsummary import summary
 from torchvision import utils
 from torchvision.datasets import ImageFolder
@@ -21,7 +20,7 @@ from sklearn.model_selection import KFold
 from autoencoder import NormalAE
 from data import COVIDx, TransformableSubset
 from transforms import Transform
-from utils import calc_metrics, freeze
+from utils import calc_metrics, freeze, get_train_sampler
 from args import parse_args
 
 # normalization constants
@@ -130,6 +129,8 @@ class Classifier(pl.LightningModule):
         max_indices = torch.max(predictions, 1).indices
         self.gt_train += labels.tolist()
         self.pr_train += max_indices.tolist()
+        
+        print(batch_idx)
 
         logs = {f"train/loss": loss}
         return {f"loss": loss, "log": logs}
@@ -199,6 +200,7 @@ class Classifier(pl.LightningModule):
 
         return {f"{prefix}/avg_loss": avg_loss, "log": logs}
 
+
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
     torch.multiprocessing.set_sharing_strategy("file_system")
@@ -209,13 +211,11 @@ def main(hparams):
     autoencoder.eval()
     freeze(autoencoder)
 
-    # create classifier
+    # create classifier and print summary 
     model = Classifier(hparams, autoencoder)
-
-    # print detailed summary with estimated network size
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
     
-    # retrieve COVIDx_v3 dataset from COVID-Net paper
+    # retrieve COVIDx_v3 train dataset from COVID-Net paper
     covidx_train = COVIDx("train", hparams.data_root, hparams.dataset_dir)
     transform = Transform(MEAN.tolist(), STD.tolist(), hparams)
 
@@ -224,7 +224,7 @@ def main(hparams):
 
     # k fold cross validation
     kfold = KFold(n_splits=hparams.folds)
-    trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs, nb_sanity_val_steps=hparams.nb_sanity_val_steps)
+    trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs, nb_sanity_val_steps=hparams.nb_sanity_val_steps, weights_summary=None)
 
     for fold, (train_idx, valid_idx) in enumerate(kfold.split(covidx_train)):
         print(f"Training {fold} of {hparams.folds} folds ...")
@@ -232,20 +232,7 @@ def main(hparams):
         # split covidx_train further into train and val data 
         train_ds = TransformableSubset(covidx_train, train_idx, transform=transform.train)
         val_ds = TransformableSubset(covidx_train, valid_idx, transform=transform.test)
-        
-        # get labels in subset for rebalancing
-        train_labels = [covidx_train.targets[i] for i in train_idx]
-
-        # configure sampler to rebalance training set
-        weights = 1 / torch.Tensor(
-            [
-                train_labels.count(0),
-                train_labels.count(1),
-                train_labels.count(2),
-            ]
-        )
-        sample_weights = weights[train_labels]
-        sampler = WeightedRandomSampler(sample_weights, hparams.batch_size)
+        sampler = get_train_sampler(covidx_train, train_idx)
 
         train_dl = DataLoader(
             train_ds,
@@ -255,9 +242,11 @@ def main(hparams):
         )
 
         val_dl = DataLoader(
-            val_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,
+            val_ds, 
+            batch_size=hparams.batch_size, 
+            num_workers=hparams.num_workers,
         )
-        
+        import pdb; pdb.set_trace()
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
     
     trainer.test(model)
