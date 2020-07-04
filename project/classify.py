@@ -15,46 +15,18 @@ from torch.utils.data.sampler import WeightedRandomSampler
 from torchsummary import summary
 from torchvision import utils
 from torchvision.datasets import ImageFolder
+from torchvision import models
 from sklearn.model_selection import KFold
 
 from autoencoder import NormalAE
 from data import COVIDx, TransformableSubset
 from transforms import Transform
-from utils import calc_metrics
-
-
-def plot_dataset(dataset, n=6):
-    # retrieve random images from dataset
-    choice = np.random.randint(len(dataset), size=n)
-    subset = Subset(dataset, choice)
-    images = [x[0] for x in subset]
-    labels = [x[1] for x in subset]
-
-    # denormalize for visualization
-    denormalization = transforms.Normalize((-MEAN / STD).tolist(), (1.0 / STD).tolist())
-    images = [denormalization(i) for i in images]
-
-    # make grid and plot
-    grid = utils.make_grid(images)
-    label_string = []
-    for label in labels:
-        if "0":
-            label_string.append("normal")
-        elif "1":
-            label_string.append("pneumonia")
-        elif "2":
-            label_string.append("COVID-19")
-
-    title = "Labels are: " + str(label_string)
-    plt.figure(figsize=(15, 6))
-    plt.title(title)
-    plt.imshow(np.transpose(grid.numpy(), (1, 2, 0)))
-    plt.show()
+from utils import calc_metrics, freeze
 
 
 # normalization constants
-MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
-STD = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
+MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
+STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
 
 
 class Classifier(pl.LightningModule):
@@ -64,43 +36,31 @@ class Classifier(pl.LightningModule):
         self.autoencoder = autoencoder
 
         # variables to save model predictions
-        self.gt = []
-        self.pr = []
+        self.gt_train = []
+        self.pr_train = []
+        self.gt_val = []
+        self.pr_val = []
 
-        # number of neurons in last dense layers
-        self.nnd = self.hparams.nfc * 4 * (self.hparams.img_size // 4 ** 3) ** 2
+        # freeze resnet50 
+        self.classifier = models.resnet50(pretrained=True)
+        self.classifier.eval()
+        freeze(self.classifier)
 
-        self.classifier = nn.Sequential(
-            # input (nc) x 256 x 256
-            nn.Conv2d(self.hparams.nc, self.hparams.nfc, 4, 2, 1),
-            nn.BatchNorm2d(self.hparams.nfc),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.MaxPool2d(2),
-            # input (nfc) x 64 x 64
-            nn.Conv2d(self.hparams.nfc, self.hparams.nfc * 2, 4, 2, 1),
-            nn.BatchNorm2d(self.hparams.nfc * 2),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.MaxPool2d(2),
-            # input (nfc*2) x 16 x 16
-            nn.Conv2d(self.hparams.nfc * 2, self.hparams.nfc * 4, 4, 2, 1),
-            nn.BatchNorm2d(self.hparams.nfc * 4),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.MaxPool2d(2),
-            # input (nfc*4) x 4 x 4
-            nn.Flatten(),
-            nn.Linear(self.nnd, self.nnd, bias=True),
-            nn.Linear(self.nnd, self.nnd, bias=True),
-            nn.Linear(self.nnd, 3, bias=True),
-            nn.Softmax(),
-        )
+        # replace fc layers
+        num_features = self.classifier.fc.in_features
+        num_classes = 3
+        self.classifier.fc = nn.Linear(num_features, num_classes)
 
     def forward(self, x):
+        # TODO revert!
         # create anomaly map
-        reconstructed = self.autoencoder(x)
+        # reconstructed = self.autoencoder(x)
+        reconstructed = x
         anomaly = x - reconstructed
 
         # classify anomaly map
-        prediction = self.classifier(anomaly)
+        prediction = self.classifier(x)
+        prediction = F.softmax(prediction)
 
         return {"reconstructed": reconstructed, "anomaly": anomaly, "prediction": prediction}
 
@@ -158,10 +118,35 @@ class Classifier(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         imgs, labels = batch
         out = self(imgs)
-        loss = F.cross_entropy(out["prediction"], labels)
+        predictions = out["prediction"]
+        loss = F.cross_entropy(predictions, labels)
 
-        logs = {f"loss": loss}
+        # reset predictions from last epoch
+        if batch_idx == 0:
+            self.gt_train = []
+            self.pr_train = []
+        
+        # save labels and predictions for evaluation
+        max_indices = torch.max(predictions, 1).indices
+        self.gt_train += labels.tolist()
+        self.pr_train += max_indices.tolist()
+
+        logs = {f"train/loss": loss}
         return {f"loss": loss, "log": logs}
+    
+    def training_epoch_end(self, outputs):
+        
+        print(f"---> metrics for entire train epoch are: \n")
+        metrics = calc_metrics(self.gt_train, self.pr_train, verbose=True)
+        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
+        logs = {f"train/avg_loss": avg_loss}
+        
+        # tensorboard only saves scalars
+        loggable_metrics = ["accuracy", "recall", "precision"]
+        metrics = {f"train/{key}": metrics[key] for key in loggable_metrics}
+        logs.update(metrics)
+
+        return {"train/avg_loss": avg_loss, "log": logs}
 
     def validation_step(self, batch, batch_idx):
         return self._shared_eval(batch, batch_idx, prefix="val", plot=True)
@@ -186,41 +171,33 @@ class Classifier(pl.LightningModule):
         if batch_idx == 0:
 
             # reset predictions from last epoch
-            self.gt = []
-            self.pr = []
+            self.gt_val = []
+            self.pr_val = []
             
             if plot:
                 self.plot(imgs, out["reconstructed"], out["anomaly"], prefix)
             
         # save labels and predictions for evaluation
         max_indices = torch.max(predictions, 1).indices
-        self.gt = self.gt + labels.tolist()
-        self.pr = self.pr + max_indices.tolist()
+        self.gt_val += labels.tolist()
+        self.pr_val += max_indices.tolist()
 
-        # add underscore to prefix
-        if prefix:
-            prefix = prefix + "_"
-
-        logs = {f"{prefix}loss": loss}
-        return {f"{prefix}loss": loss, "log": logs}
+        logs = {f"{prefix}/loss": loss}
+        return {f"{prefix}_loss": loss, "log": logs}
 
     def _shared_eval_epoch_end(self, outputs, prefix):
+        
+        print(f"---> metrics for entire {prefix} epoch are: \n")        
+        metrics = calc_metrics(self.gt_val, self.pr_val, verbose=True)
         avg_loss = torch.stack([x[f"{prefix}_loss"] for x in outputs]).mean()
-        logs = {f"avg_{prefix}_loss": avg_loss}
-        metrics = calc_metrics(self.gt, self.pr, verbose=True)
+        logs = {f"{prefix}/avg_loss": avg_loss}
         
         # tensorboard only saves scalars
         loggable_metrics = ["accuracy", "recall", "precision"]
-        metrics = {key: metrics[key] for key in loggable_metrics}
+        metrics = {f"{prefix}/{key}": metrics[key] for key in loggable_metrics}
         logs.update(metrics)
 
-        return {f"avg_{prefix}_loss": avg_loss, "log": logs}
-
-
-# TODO train with kfold split
-# TODO increase capability of autoencoder
-# TODO use Unet as autoencoder -> https://github.com/mateuszbuda/brain-segmentation-pytorch/blob/master/unet.py
-# TODO use resnet
+        return {f"{prefix}/avg_loss": avg_loss, "log": logs}
 
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
@@ -230,11 +207,7 @@ def main(hparams):
     autoencoder = NormalAE(hparams)
     autoencoder.load_state_dict(torch.load(hparams.ae_pth, map_location=torch.device("cpu")))
     autoencoder.eval()
-
-    # freeze autoencoder weights
-    for c in autoencoder.children():
-        for p in c.parameters():
-            p.requires_grad = False
+    freeze(autoencoder)
 
     # create classifier
     model = Classifier(hparams, autoencoder)
@@ -251,6 +224,7 @@ def main(hparams):
 
     # k fold cross validation
     kfold = KFold(n_splits=hparams.folds)
+    trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs, nb_sanity_val_steps=hparams.nb_sanity_val_steps)
 
     for fold, (train_idx, valid_idx) in enumerate(kfold.split(covidx_train)):
         print(f"Training {fold} of {hparams.folds} folds ...")
@@ -284,7 +258,6 @@ def main(hparams):
             val_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,
         )
         
-        trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs, nb_sanity_val_steps=hparams.nb_sanity_val_steps)
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
     
     trainer.test(model)
@@ -299,7 +272,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_name", type=str, default="classifier", help="Name of logging session")
     parser.add_argument("--ae_pth", type=str, default="models/autoencoder_30_05_2020_16_09_52_bs16_ep40_tl0.0064.pth", help="Path of trained autoencoder")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
-    parser.add_argument("--img_size", type=int, default=256, help="Spatial size of training images")
+    parser.add_argument("--img_size", type=int, default=224, help="Spatial size of training images")
     parser.add_argument("--max_epochs", type=int, default=4, help="Number of maximum training epochs")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
     parser.add_argument("--nc", type=int, default=3, help="Number of channels in the training images")
@@ -322,3 +295,25 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     main(args)
+
+# TODO CHECK IF WE ARE ACTUALLY PLOTTING THE CORRECT METRICS
+
+# TODO run resnet on image directly 
+# TODO run resnet on anomaly map
+# TODO increase capability of autoencoder because full variability of healthy data needs to be captured! 
+# TODO use Unet as autoencoder -> https://github.com/mateuszbuda/brain-segmentation-pytorch/blob/master/unet.py
+# TODO why is my loss stagnating (run resnet classifier on image directly, should reduce loss)
+# TODO maybe reduce learning rate
+# TODO check if kfold can shuffle directly
+# TODO fix training accuracy metrics 
+# TODO think about loss function
+# TODO maybe introduce thresholing to anomaly map 
+# TODO why is the anomaly map not mostly black? visualise without normalization 
+# TODO research if loss function weighting or rather dataset rebalancing (nll_loss = nn.CrossEntropyLoss(weight=torch.tensor([2., 2., 250.]).to('cuda')))
+# TODO check if makes sense to use torch.abs(anomaly_map) https://github.com/chirag126/CoroNet/blob/728049e695c4efe0a11dc2a1282dc4f16af504f4/train_CIN.py#L91
+# TODO check if images contain same info on all three channels or not
+# TODO add test/accuracy --> tensorboard will format it nicely
+
+# Differentiate from CoroNet
+# - maybe use two autoencoders (normal, pneumonia) as feature extractors (use only encoder) and then classify directly & fine tune encoders jointly
+# - check if SVM improves performance
