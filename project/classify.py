@@ -136,8 +136,6 @@ class Classifier(pl.LightningModule):
         self.gt_train += labels.tolist()
         self.pr_train += max_indices.tolist()
 
-        print(batch_idx)
-
         logs = {f"train/loss": loss}
         return {f"loss": loss, "log": logs}
 
@@ -220,7 +218,15 @@ def main(hparams):
     # create classifier and print summary
     model = Classifier(hparams, autoencoder)
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
-
+    
+    trainer = Trainer(
+        logger=logger,
+        gpus=hparams.gpus,
+        max_epochs=hparams.max_epochs,
+        nb_sanity_val_steps=hparams.nb_sanity_val_steps,
+        weights_summary=None,
+    )
+    
     # retrieve COVIDx_v3 train dataset from COVID-Net paper
     covidx_train = COVIDx("train", hparams.data_root, hparams.dataset_dir)
     transform = Transform(MEAN.tolist(), STD.tolist(), hparams)
@@ -230,13 +236,6 @@ def main(hparams):
 
     # k fold cross validation
     kfold = KFold(n_splits=hparams.folds)
-    trainer = Trainer(
-        logger=logger,
-        gpus=hparams.gpus,
-        max_epochs=hparams.max_epochs,
-        nb_sanity_val_steps=hparams.nb_sanity_val_steps,
-        weights_summary=None,
-    )
 
     for fold, (train_idx, valid_idx) in enumerate(kfold.split(covidx_train)):
         print(f"Training {fold} of {hparams.folds} folds ...")
