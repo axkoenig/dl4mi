@@ -11,12 +11,9 @@ class Transform:
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(degrees=hparams.aug_rot, expand=True),
                 transforms.RandomResizedCrop(
-                    hparams.img_size,
-                    scale=(hparams.aug_min_scale, hparams.aug_max_scale), 
+                    hparams.img_size, scale=(hparams.aug_min_scale, hparams.aug_max_scale),
                 ),
-                transforms.ColorJitter(
-                    brightness=hparams.aug_bright, contrast=hparams.aug_cont
-                ),
+                transforms.ColorJitter(brightness=hparams.aug_bright, contrast=hparams.aug_cont),
                 transforms.ToTensor(),
                 transforms.Normalize(mean, std),
             ]

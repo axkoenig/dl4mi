@@ -40,7 +40,7 @@ class Classifier(pl.LightningModule):
         self.gt_val = []
         self.pr_val = []
 
-        # freeze resnet50 
+        # freeze resnet50
         self.classifier = models.resnet50(pretrained=True)
         self.classifier.eval()
         freeze(self.classifier)
@@ -61,18 +61,24 @@ class Classifier(pl.LightningModule):
         prediction = self.classifier(x)
         prediction = F.softmax(prediction)
 
-        return {"reconstructed": reconstructed, "anomaly": anomaly, "prediction": prediction}
+        return {
+            "reconstructed": reconstructed,
+            "anomaly": anomaly,
+            "prediction": prediction,
+        }
 
     def test_dataloader(self):
         transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
-        covidx_test = COVIDx("test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test)
+        covidx_test = COVIDx(
+            "test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test,
+        )
 
         return DataLoader(
             covidx_test, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers,
         )
 
     def configure_optimizers(self):
-        return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2))
+        return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2),)
 
     def plot(self, x, r, a, prefix, n=4):
         """Plots n triplets of (original image, reconstr. image, anomaly map)
@@ -124,24 +130,24 @@ class Classifier(pl.LightningModule):
         if batch_idx == 0:
             self.gt_train = []
             self.pr_train = []
-        
+
         # save labels and predictions for evaluation
         max_indices = torch.max(predictions, 1).indices
         self.gt_train += labels.tolist()
         self.pr_train += max_indices.tolist()
-        
+
         print(batch_idx)
 
         logs = {f"train/loss": loss}
         return {f"loss": loss, "log": logs}
-    
+
     def training_epoch_end(self, outputs):
-        
+
         print(f"---> metrics for entire train epoch are: \n")
         metrics = calc_metrics(self.gt_train, self.pr_train, verbose=True)
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
         logs = {f"train/avg_loss": avg_loss}
-        
+
         # tensorboard only saves scalars
         loggable_metrics = ["accuracy", "recall", "precision"]
         metrics = {f"train/{key}": metrics[key] for key in loggable_metrics}
@@ -174,10 +180,10 @@ class Classifier(pl.LightningModule):
             # reset predictions from last epoch
             self.gt_val = []
             self.pr_val = []
-            
+
             if plot:
                 self.plot(imgs, out["reconstructed"], out["anomaly"], prefix)
-            
+
         # save labels and predictions for evaluation
         max_indices = torch.max(predictions, 1).indices
         self.gt_val += labels.tolist()
@@ -187,12 +193,12 @@ class Classifier(pl.LightningModule):
         return {f"{prefix}_loss": loss, "log": logs}
 
     def _shared_eval_epoch_end(self, outputs, prefix):
-        
-        print(f"---> metrics for entire {prefix} epoch are: \n")        
+
+        print(f"---> metrics for entire {prefix} epoch are: \n")
         metrics = calc_metrics(self.gt_val, self.pr_val, verbose=True)
         avg_loss = torch.stack([x[f"{prefix}_loss"] for x in outputs]).mean()
         logs = {f"{prefix}/avg_loss": avg_loss}
-        
+
         # tensorboard only saves scalars
         loggable_metrics = ["accuracy", "recall", "precision"]
         metrics = {f"{prefix}/{key}": metrics[key] for key in loggable_metrics}
@@ -204,17 +210,17 @@ class Classifier(pl.LightningModule):
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
     torch.multiprocessing.set_sharing_strategy("file_system")
-    
+
     # load pretrained autoencoder
     autoencoder = NormalAE(hparams)
     autoencoder.load_state_dict(torch.load(hparams.ae_pth, map_location=torch.device("cpu")))
     autoencoder.eval()
     freeze(autoencoder)
 
-    # create classifier and print summary 
+    # create classifier and print summary
     model = Classifier(hparams, autoencoder)
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
-    
+
     # retrieve COVIDx_v3 train dataset from COVID-Net paper
     covidx_train = COVIDx("train", hparams.data_root, hparams.dataset_dir)
     transform = Transform(MEAN.tolist(), STD.tolist(), hparams)
@@ -224,20 +230,26 @@ def main(hparams):
 
     # k fold cross validation
     kfold = KFold(n_splits=hparams.folds)
-    trainer = Trainer(logger=logger, gpus=hparams.gpus, max_epochs=hparams.max_epochs, nb_sanity_val_steps=hparams.nb_sanity_val_steps, weights_summary=None)
+    trainer = Trainer(
+        logger=logger,
+        gpus=hparams.gpus,
+        max_epochs=hparams.max_epochs,
+        nb_sanity_val_steps=hparams.nb_sanity_val_steps,
+        weights_summary=None,
+    )
 
     for fold, (train_idx, valid_idx) in enumerate(kfold.split(covidx_train)):
         print(f"Training {fold} of {hparams.folds} folds ...")
 
-        # split covidx_train further into train and val data 
+        # split covidx_train further into train and val data
         train_ds = TransformableSubset(covidx_train, train_idx, transform=transform.train)
         val_ds = TransformableSubset(covidx_train, valid_idx, transform=transform.test)
         sampler = get_train_sampler(covidx_train, train_idx)
 
         train_dl = DataLoader(
-            train_ds,
-            batch_size=hparams.batch_size,
-            sampler=sampler,
+            train_ds, 
+            batch_size=hparams.batch_size, 
+            sampler=sampler, 
             num_workers=hparams.num_workers,
         )
 
@@ -246,9 +258,9 @@ def main(hparams):
             batch_size=hparams.batch_size, 
             num_workers=hparams.num_workers,
         )
-        import pdb; pdb.set_trace()
+
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
-    
+
     trainer.test(model)
 
 

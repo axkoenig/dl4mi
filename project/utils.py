@@ -5,6 +5,7 @@ import torchvision.transforms as transforms
 from sklearn import metrics
 from torch.utils.data.sampler import WeightedRandomSampler
 
+
 def calc_metrics(labels, predictions, verbose=False):
     """Calculates evaluation metrics.
 
@@ -30,18 +31,21 @@ def calc_metrics(labels, predictions, verbose=False):
     precision = metrics.precision_score(labels, predictions, average="weighted")
     class_precision = metrics.precision_score(labels, predictions, average=None)
 
-    eval_metrics = {"confusion_matrix": confusion_matrix, 
-                    "accuracy": accuracy,
-                    "recall": recall, 
-                    "class_recall": class_recall, 
-                    "precision": precision,
-                    "class_precision": class_precision}
+    eval_metrics = {
+        "confusion_matrix": confusion_matrix,
+        "accuracy": accuracy,
+        "recall": recall,
+        "class_recall": class_recall,
+        "precision": precision,
+        "class_precision": class_precision,
+    }
 
     if verbose:
         print("--- EVAL METRICS ---")
         print(eval_metrics)
 
     return eval_metrics
+
 
 def plot_dataset(dataset, MEAN, STD, n=6):
     # retrieve random images from dataset
@@ -71,9 +75,11 @@ def plot_dataset(dataset, MEAN, STD, n=6):
     plt.imshow(np.transpose(grid.numpy(), (1, 2, 0)))
     plt.show()
 
+
 def freeze(model):
     for param in model.parameters():
         param.requires_grad = False
+
 
 def get_train_sampler(dataset, indices):
 
@@ -81,15 +87,9 @@ def get_train_sampler(dataset, indices):
     labels = [dataset.targets[i] for i in indices]
 
     # configure sampler to rebalance training set
-    weights = 1 / torch.Tensor(
-        [
-            labels.count(0),
-            labels.count(1),
-            labels.count(2),
-        ]
-    )
+    weights = 1 / torch.Tensor([labels.count(0), labels.count(1), labels.count(2),])
     sample_weights = weights[labels]
     num_samples = len(indices)
     sampler = WeightedRandomSampler(sample_weights, num_samples)
-    
+
     return sampler
