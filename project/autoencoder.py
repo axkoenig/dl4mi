@@ -1,4 +1,4 @@
-__author__ = 'Alexander Koenig, Li Nguyen'
+__author__ = "Alexander Koenig, Li Nguyen"
 
 import datetime
 import os
@@ -29,10 +29,11 @@ from unet import UNet
 MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
 STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
 
+
 class NormalAE(pl.LightningModule):
     def __init__(self, hparams):
         super().__init__()
-        self.hparams = hparams 
+        self.hparams = hparams
         self.unet = UNet(in_channels=hparams.nc, out_channels=hparams.nc)
 
     def forward(self, x):
@@ -43,27 +44,31 @@ class NormalAE(pl.LightningModule):
         transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
 
         # retrieve "normal" cases of COVIDx dataset from COVID-Net paper
-        self.train_ds = COVIDxNormal("train", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.train)
-        self.test_ds = COVIDxNormal("test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test)
+        self.train_ds = COVIDxNormal(
+            "train", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.train
+        )
+        self.test_ds = COVIDxNormal(
+            "test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test
+        )
 
         # define at which indices to plot during training
         num_train_batches = len(self.train_ds) // self.hparams.batch_size
-        self.train_plot_indices = np.linspace(0, num_train_batches, self.hparams.num_plots_per_epoch, dtype=int)
+        self.train_plot_indices = np.linspace(
+            0, num_train_batches, self.hparams.num_plots_per_epoch, dtype=int
+        )
 
     def train_dataloader(self):
         return DataLoader(
-            self.train_ds, 
-            batch_size=self.hparams.batch_size, 
-            shuffle=True, 
-            num_workers=self.hparams.num_workers
+            self.train_ds,
+            batch_size=self.hparams.batch_size,
+            shuffle=True,
+            num_workers=self.hparams.num_workers,
         )
 
     def test_dataloader(self):
         return DataLoader(
-            self.test_ds, 
-            batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers
-    )
+            self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers
+        )
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2))
@@ -88,7 +93,7 @@ class NormalAE(pl.LightningModule):
         grid_top = vutils.make_grid(x, nrow=n)
         grid_bottom = vutils.make_grid(output, nrow=n)
         grid = torch.cat((grid_top, grid_bottom), 1)
-        
+
         name = f"{prefix}/input_reconstr_images"
         self.logger.experiment.add_image(name, grid)
 
@@ -97,19 +102,19 @@ class NormalAE(pl.LightningModule):
         output = self(imgs)
         loss = F.mse_loss(output, imgs)
 
-        # plot input and reconstructed images 
+        # plot input and reconstructed images
         if batch_idx in self.train_plot_indices:
             self.plot(imgs, output, "train")
 
         logs = {f"train/loss": loss}
         return {f"loss": loss, "log": logs}
 
-    def test_step(self, batch, batch_idx):   
+    def test_step(self, batch, batch_idx):
         imgs, _ = batch
         output = self(imgs)
         loss = F.mse_loss(output, imgs)
 
-        # plot at beginning of epoch 
+        # plot at beginning of epoch
         if batch_idx == 0:
             self.plot(imgs, output, "test")
 
@@ -121,23 +126,23 @@ class NormalAE(pl.LightningModule):
         logs = {f"test/avg_loss": avg_loss}
         return {f"avg_test_loss": avg_loss, "log": logs}
 
-        
+
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
     torch.multiprocessing.set_sharing_strategy("file_system")
-    
+
     # create model and print detailed summary with estimated network size
     model = NormalAE(hparams)
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
 
     trainer = Trainer(
-        logger=logger, 
-        gpus=hparams.gpus, 
+        logger=logger,
+        gpus=hparams.gpus,
         num_sanity_val_steps=hparams.num_sanity_val_steps,
         max_epochs=hparams.max_epochs,
         weights_summary=None,
     )
-    
+
     trainer.fit(model)
     trainer.test(model)
 
@@ -145,14 +150,14 @@ def main(hparams):
     if not os.path.exists(hparams.model_dir):
         os.makedirs(hparams.model_dir)
         print(f"created directory {hparams.models_dir}")
-    
+
     save_path = os.path.join(hparams.model_dir, "autoencoder_" + timestamp + ".pth")
     print(f"saving model to {save_path}...")
     torch.save(model.state_dict(), save_path)
 
     print("done. have a good day!")
 
-    
+
 if __name__ == "__main__":
 
     args = parse_args()
