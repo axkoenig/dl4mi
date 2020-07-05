@@ -92,4 +92,4 @@ def get_train_sampler(dataset, indices):
     num_samples = len(indices)
     sampler = WeightedRandomSampler(sample_weights, num_samples)
 
-    return sampler
+    return sampler, weights

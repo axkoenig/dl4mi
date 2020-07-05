@@ -29,6 +29,8 @@ from args import parse_args
 MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
 STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
 
+TRAIN_WEIGHTS = []
+VAL_WEIGHTS = []
 
 class Classifier(pl.LightningModule):
     def __init__(self, hparams):
@@ -121,7 +123,7 @@ class Classifier(pl.LightningModule):
         imgs, labels = batch
         out = self(imgs)
         predictions = out["prediction"]
-        loss = F.cross_entropy(predictions, labels)
+        loss = F.cross_entropy(predictions, labels, weight=TRAIN_WEIGHTS)
 
         # reset predictions from last epoch
         if batch_idx == 0:
@@ -167,7 +169,11 @@ class Classifier(pl.LightningModule):
         imgs, labels = batch
         out = self(imgs)
         predictions = out["prediction"]
-        loss = F.cross_entropy(predictions, labels)
+
+        if prefix == "val":
+            loss = F.cross_entropy(predictions, labels, weight=VAL_WEIGHTS)
+        elif prefix == "test":
+            loss = F.cross_entropy(predictions, labels)
 
         # at beginning of epoch
         if batch_idx == 0:
@@ -234,12 +240,17 @@ def main(hparams):
         # split covidx_train further into train and val data
         train_ds = TransformableSubset(covidx_train, train_idx, transform=transform.train)
         val_ds = TransformableSubset(covidx_train, valid_idx, transform=transform.test)
-        sampler = get_train_sampler(covidx_train, train_idx)
+        
+        # weights for loss function
+        _, train_weights = get_train_sampler(covidx_train, train_idx)
+        _, val_weights = get_train_sampler(covidx_train, valid_idx)
+        global TRAIN_WEIGHTS, VAL_WEIGHTS
+        TRAIN_WEIGHTS = train_weights
+        VAL_WEIGHTS = val_weights
 
         train_dl = DataLoader(
             train_ds, 
-            batch_size=hparams.batch_size, 
-            sampler=sampler, 
+            batch_size=hparams.batch_size,
             num_workers=hparams.num_workers,
         )
 
