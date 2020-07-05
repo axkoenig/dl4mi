@@ -36,24 +36,13 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-# TODO CHECK IF WE ARE ACTUALLY PLOTTING THE CORRECT METRICS
+# TODO check if kfold can shuffle directly
+# TODO why does resnet not save 
 
-# TODO run resnet on image directly 
-# TODO run resnet on anomaly map
+# Maybe
 # TODO increase capability of autoencoder because full variability of healthy data needs to be captured! 
 # TODO use Unet as autoencoder -> https://github.com/mateuszbuda/brain-segmentation-pytorch/blob/master/unet.py
-# TODO why is my loss stagnating (run resnet classifier on image directly, should reduce loss)
-# TODO maybe reduce learning rate
-# TODO check if kfold can shuffle directly
-# TODO fix training accuracy metrics 
-# TODO think about loss function
 # TODO maybe introduce thresholing to anomaly map 
 # TODO why is the anomaly map not mostly black? visualise without normalization 
 # TODO research if loss function weighting or rather dataset rebalancing (nll_loss = nn.CrossEntropyLoss(weight=torch.tensor([2., 2., 250.]).to('cuda')))
 # TODO check if makes sense to use torch.abs(anomaly_map) https://github.com/chirag126/CoroNet/blob/728049e695c4efe0a11dc2a1282dc4f16af504f4/train_CIN.py#L91
-# TODO check if images contain same info on all three channels or not
-# TODO add test/accuracy --> tensorboard will format it nicely
-
-# Differentiate from CoroNet
-# - maybe use two autoencoders (normal, pneumonia) as feature extractors (use only encoder) and then classify directly & fine tune encoders jointly
-# - check if SVM improves performance
