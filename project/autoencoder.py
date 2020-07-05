@@ -1,9 +1,3 @@
-__author__ = "Alexander Koenig, Li Nguyen"
-
-import datetime
-import os
-from argparse import ArgumentParser
-
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -24,6 +18,7 @@ from args import parse_args
 from data import COVIDxNormal, random_split
 from transforms import Transform
 from unet import UNet
+from utils import save_model
 
 # normalization constants
 MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
@@ -145,16 +140,7 @@ def main(hparams):
 
     trainer.fit(model)
     trainer.test(model)
-
-    timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H:%M:%S")
-    if not os.path.exists(hparams.model_dir):
-        os.makedirs(hparams.model_dir)
-        print(f"created directory {hparams.models_dir}")
-
-    save_path = os.path.join(hparams.model_dir, "autoencoder_" + timestamp + ".pth")
-    print(f"saving model to {save_path}...")
-    torch.save(model.state_dict(), save_path)
-
+    save_model(hparams.models_dir, hparams.log_name)
     print("done. have a good day!")
 
 

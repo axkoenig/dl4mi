@@ -1,8 +1,3 @@
-import datetime
-import os 
-from argparse import ArgumentParser
-
-import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -22,7 +17,7 @@ from sklearn.model_selection import KFold
 from autoencoder import NormalAE
 from data import COVIDx, TransformableSubset
 from transforms import Transform
-from utils import calc_metrics, freeze, get_train_sampler
+from utils import calc_metrics, freeze, get_train_sampler, save_model
 from args import parse_args
 
 # normalization constants 
@@ -260,16 +255,7 @@ def main(hparams):
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
     trainer.test(model)
-
-    # save model 
-    timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H%M%S")
-    if not os.path.exists(hparams.models_dir):
-        os.makedirs(hparams.models_dir)
-        print(f"created directory {hparams.models_dir}")
-    save_path = os.path.join(hparams.models_dir, hparams.log_name + "_" + timestamp + ".pth")
-    print(f"saving model to {save_path}...")
-    torch.save(model.state_dict(), save_path)
-
+    save_model(hparams.models_dir, hparams.log_name)
     print("done. have a good day!")
 
 

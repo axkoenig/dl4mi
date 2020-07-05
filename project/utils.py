@@ -1,3 +1,6 @@
+import datetime
+import os
+
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -93,3 +96,15 @@ def get_train_sampler(dataset, indices):
     sampler = WeightedRandomSampler(sample_weights, num_samples)
 
     return sampler
+
+def save_model(model_dir, model_name):
+
+    timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H:%M:%S")
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+        print(f"created directory {model_dir}")
+
+    save_path = os.path.join(model_dir, model_name + "_" + timestamp + ".pth")
+    
+    print(f"saving model to {save_path}...")
+    torch.save(model.state_dict(), save_path)
