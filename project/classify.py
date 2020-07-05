@@ -255,7 +255,10 @@ def main(hparams):
 
     # save model 
     timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H%M%S")
-    save_path = os.path.join(hparams.models_dir, hparams.log_name + "_" + timestamp + ".pth") 
+    if not os.path.exists(hparams.models_dir):
+        os.makedirs(hparams.models_dir)
+        print(f"created directory {hparams.models_dir}")
+    save_path = os.path.join(hparams.models_dir, hparams.log_name + "_" + timestamp + ".pth")
     print(f"saving model to {save_path}...")
     torch.save(model.state_dict(), save_path)
 
