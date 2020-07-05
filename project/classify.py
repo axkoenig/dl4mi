@@ -123,7 +123,7 @@ class Classifier(pl.LightningModule):
         imgs, labels = batch
         out = self(imgs)
         predictions = out["prediction"]
-        loss = F.cross_entropy(predictions, labels, weight=TRAIN_WEIGHTS)
+        loss = F.cross_entropy(predictions, labels, weight=TRAIN_WEIGHTS.cuda())
 
         # reset predictions from last epoch
         if batch_idx == 0:
@@ -171,7 +171,7 @@ class Classifier(pl.LightningModule):
         predictions = out["prediction"]
 
         if prefix == "val":
-            loss = F.cross_entropy(predictions, labels, weight=VAL_WEIGHTS)
+            loss = F.cross_entropy(predictions, labels, weight=VAL_WEIGHTS.cuda())
         elif prefix == "test":
             loss = F.cross_entropy(predictions, labels)
 
