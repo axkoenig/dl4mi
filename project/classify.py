@@ -25,15 +25,19 @@ from transforms import Transform
 from utils import calc_metrics, freeze, get_train_sampler
 from args import parse_args
 
-# normalization constants
+# normalization constants for ResNet 
 MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
 STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
 
+# normalization constants for Autoencoder
+MEAN_AE = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
+STD_AE = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
 
 class Classifier(pl.LightningModule):
-    def __init__(self, hparams):
+    def __init__(self, hparams, autoencoder):
         super().__init__()
         self.hparams = hparams
+        self.autoencoder = autoencoder
 
         # variables to save model predictions
         self.gt_train = []
@@ -52,7 +56,20 @@ class Classifier(pl.LightningModule):
         self.classifier.fc = nn.Linear(num_features, num_classes)
 
     def forward(self, x):
-    
+        # create anomaly map
+        reconstructed = self.autoencoder(x)
+        anomaly = x - reconstructed
+
+        # classify anomaly map
+        prediction = self.classifier(anomaly)
+        prediction = F.softmax(prediction)
+
+        return {
+            "reconstructed": reconstructed,
+            "anomaly": anomaly,
+            "prediction": prediction,
+        }
+
         # classify anomaly map
         prediction = self.classifier(x)
         prediction = F.softmax(prediction)
