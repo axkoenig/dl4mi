@@ -4,6 +4,7 @@ import datetime
 import os
 from argparse import ArgumentParser
 
+import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.multiprocessing
@@ -19,9 +20,9 @@ from torch.utils.data import DataLoader, Subset
 from torchsummary import summary
 from torchvision.datasets import ImageFolder
 
+from args import parse_args
 from data import COVIDxNormal, random_split
 from transforms import Transform
-from args import parse_args
 from unet import UNet
 
 # normalization constants
@@ -38,36 +39,22 @@ class NormalAE(pl.LightningModule):
         x = self.unet(x)
         return x
 
-    def prepare_data(self):
-
+    def setup(self, mode):
         transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
 
-        # retrieve normal cases of COVIDx dataset from COVID-Net paper
-        self.train_ds = COVIDxNormal("train", self.hparams.data_root, self.hparams.dataset_dir)
+        # retrieve "normal" cases of COVIDx dataset from COVID-Net paper
+        self.train_ds = COVIDxNormal("train", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.train)
         self.test_ds = COVIDxNormal("test", self.hparams.data_root, self.hparams.dataset_dir, transform=transform.test)
 
-        # further split train into train and val
-        train_split = 0.95
-        train_size = int(train_split * len(self.train_ds))
-        val_size = len(self.train_ds) - train_size
-        self.train_ds, self.val_ds = random_split(self.train_ds, [train_size, val_size])
-
-        # apply correct transforms
-        self.train_ds.transform = transform.train
-        self.val_ds.transform = transform.test
+        # define at which indices to plot during training
+        num_train_batches = len(self.train_ds) // self.hparams.batch_size
+        self.train_plot_indices = np.linspace(0, num_train_batches, self.hparams.num_plots_per_epoch, dtype=int)
 
     def train_dataloader(self):
         return DataLoader(
             self.train_ds, 
             batch_size=self.hparams.batch_size, 
             shuffle=True, 
-            num_workers=self.hparams.num_workers
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_ds, 
-            batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers
         )
 
@@ -102,44 +89,38 @@ class NormalAE(pl.LightningModule):
         grid_bottom = vutils.make_grid(output, nrow=n)
         grid = torch.cat((grid_top, grid_bottom), 1)
         
-        name = f"{prefix}_input_reconstr_images"
+        name = f"{prefix}/input_reconstr_images"
         self.logger.experiment.add_image(name, grid)
 
     def training_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx)
-
-    def validation_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, prefix="val", plot=True)
-
-    def validation_epoch_end(self, outputs):
-        return self._shared_eval_epoch_end(outputs, "val")
-
-    def test_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, prefix="test", plot=True)
-
-    def test_epoch_end(self, outputs):
-        return self._shared_eval_epoch_end(outputs, "test")
-
-    def _shared_eval(self, batch, batch_idx, prefix="", plot=False):
         imgs, _ = batch
         output = self(imgs)
         loss = F.mse_loss(output, imgs)
 
-        # plot input, mixed and reconstructed images at beginning of epoch
-        if plot and batch_idx == 0:
-            self.plot(imgs, output, prefix)
+        # plot input and reconstructed images 
+        if batch_idx in self.train_plot_indices:
+            self.plot(imgs, output, "train")
 
-        # add underscore to prefix
-        if prefix:
-            prefix = prefix + "_"
+        logs = {f"train/loss": loss}
+        return {f"loss": loss, "log": logs}
 
-        logs = {f"{prefix}loss": loss}
-        return {f"{prefix}loss": loss, "log": logs}
+    def test_step(self, batch, batch_idx):   
+        imgs, _ = batch
+        output = self(imgs)
+        loss = F.mse_loss(output, imgs)
 
-    def _shared_eval_epoch_end(self, outputs, prefix):
-        avg_loss = torch.stack([x[f"{prefix}_loss"] for x in outputs]).mean()
-        logs = {f"avg_{prefix}_loss": avg_loss}
-        return {f"avg_{prefix}_loss": avg_loss, "log": logs}
+        # plot at beginning of epoch 
+        if batch_idx == 0:
+            self.plot(imgs, output, "test")
+
+        logs = {f"test/loss": loss}
+        return {f"test_loss": loss, "log": logs}
+
+    def test_epoch_end(self, outputs):
+        avg_loss = torch.stack([x[f"test_loss"] for x in outputs]).mean()
+        logs = {f"test/avg_loss": avg_loss}
+        return {f"avg_test_loss": avg_loss, "log": logs}
+
         
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
@@ -152,6 +133,7 @@ def main(hparams):
     trainer = Trainer(
         logger=logger, 
         gpus=hparams.gpus, 
+        num_sanity_val_steps=hparams.num_sanity_val_steps,
         max_epochs=hparams.max_epochs,
         weights_summary=None,
     )
@@ -162,10 +144,15 @@ def main(hparams):
     timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H:%M:%S")
     if not os.path.exists(hparams.model_dir):
         os.makedirs(hparams.model_dir)
+        print(f"created directory {hparams.models_dir}")
     
-    save_pth = os.path.join(hparams.model_dir, "autoencoder_" + timestamp + ".pth")
-    torch.save(model.state_dict(), save_pth)
+    save_path = os.path.join(hparams.model_dir, "autoencoder_" + timestamp + ".pth")
+    print(f"saving model to {save_path}...")
+    torch.save(model.state_dict(), save_path)
 
+    print("done. have a good day!")
+
+    
 if __name__ == "__main__":
 
     args = parse_args()
