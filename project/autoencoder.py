@@ -21,99 +21,22 @@ from torchvision.datasets import ImageFolder
 
 from data import COVIDxNormal, random_split
 from transforms import Transform
+from args import parse_args
+from unet import UNet
 
 # normalization constants
-MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
-STD = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
+MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
+STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
 
 class NormalAE(pl.LightningModule):
     def __init__(self, hparams):
         super().__init__()
         self.hparams = hparams 
-
-        self.encoder = nn.Sequential(
-            # input (nc) x 256 x 256
-            nn.Conv2d(hparams.nc, hparams.nfe, 4, 2, 1),
-            nn.BatchNorm2d(hparams.nfe),
-            nn.LeakyReLU(0.2, inplace=True),
-            # input (nfe) x 128 x 128
-            nn.Conv2d(hparams.nfe, hparams.nfe*2, 4, 2, 1),
-            nn.BatchNorm2d(hparams.nfe*2),
-            nn.LeakyReLU(0.2, inplace=True),
-            # input (nfe*2) x 64 x 64
-            nn.Conv2d(hparams.nfe*2, hparams.nfe*4, 4, 2, 1),
-            nn.BatchNorm2d(hparams.nfe*4),
-            nn.LeakyReLU(0.2, inplace=True),
-            # input (nfe*4) x 32 x 32
-            nn.Conv2d(hparams.nfe*4, hparams.nfe*8, 4, 2, 1),
-            nn.BatchNorm2d(hparams.nfe*8),
-            nn.LeakyReLU(0.2, inplace=True),
-            # input (nfe*8) x 16 x 16
-            nn.Conv2d(hparams.nfe*8, hparams.nfe*16, 4, 2, 1),
-            nn.BatchNorm2d(hparams.nfe*16),
-            nn.LeakyReLU(0.2, inplace=True),
-            # input (nfe*16) x 8 x 8
-            nn.Conv2d(hparams.nfe*16, hparams.nfe*32, 4, 2, 1),
-            nn.BatchNorm2d(hparams.nfe*32),
-            nn.LeakyReLU(0.2, inplace=True),
-            # input (nfe*32) x 4 x 4,
-            nn.Conv2d(hparams.nfe*32, hparams.nz, 4, 2, 1),
-            nn.BatchNorm2d(hparams.nz),
-            nn.LeakyReLU(0.2, inplace=True),
-            # output (nz) x 2 x 2
-        )
-
-        self.decoder = nn.Sequential(             
-            # input (nz) x 2 x 2
-            nn.ConvTranspose2d(hparams.nz, hparams.nfd * 32, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(hparams.nfd * 32),
-            nn.ReLU(True),
-
-            # input (nfd*32) x 4 x 4
-            nn.ConvTranspose2d(hparams.nfd*32, hparams.nfd * 16, 4, 1, 0, bias=False),
-            nn.BatchNorm2d(hparams.nfd * 16),
-            nn.ReLU(True),
-
-            # input (nfd*16) x 8 x 8
-            nn.ConvTranspose2d(hparams.nfd * 16, hparams.nfd * 8, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(hparams.nfd * 8),
-            nn.ReLU(True),
-
-            # input (nfd*8) x 16 x 16
-            nn.ConvTranspose2d(hparams.nfd * 8, hparams.nfd * 4, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(hparams.nfd * 4),
-            nn.ReLU(True),
-
-            # input (nfd*4) x 32 x 32
-            nn.ConvTranspose2d(hparams.nfd * 4, hparams.nfd * 2, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(hparams.nfd * 2),
-            nn.ReLU(True),
-
-            # input (nfd*2) x 64 x 64
-            nn.ConvTranspose2d(hparams.nfd * 2, hparams.nfd, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(hparams.nfd),
-            nn.ReLU(True),
-
-            # input (nfd) x 128 x 128
-            nn.ConvTranspose2d(hparams.nfd, hparams.nc, 4, 2, 1, bias=False),
-            nn.Tanh()
-            # output (nc) x 256 x 256
-        )
+        self.unet = UNet(in_channels=hparams.nc, out_channels=hparams.nc)
 
     def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
+        x = self.unet(x)
         return x
-
-    def weights_init(self):
-        classname = self.__class__.__name__
-        if classname.find('Conv') != -1:
-            # draw weights from normal distribution
-            nn.init.normal_(self.weight.data, 0.0, 0.02)
-        elif classname.find('BatchNorm') != -1:
-            nn.init.normal_(self.weight.data, 1.0, 0.02)
-            # initializing gamma and beta for BN
-            nn.init.constant_(self.bias.data, 0)
 
     def prepare_data(self):
 
@@ -222,16 +145,15 @@ def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
     torch.multiprocessing.set_sharing_strategy("file_system")
     
+    # create model and print detailed summary with estimated network size
     model = NormalAE(hparams)
-    model.apply(NormalAE.weights_init)
-
-    # print detailed summary with estimated network size
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
 
     trainer = Trainer(
         logger=logger, 
         gpus=hparams.gpus, 
-        max_epochs=hparams.max_epochs
+        max_epochs=hparams.max_epochs,
+        weights_summary=None,
     )
     
     trainer.fit(model)
@@ -245,30 +167,6 @@ def main(hparams):
     torch.save(model.state_dict(), save_pth)
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
 
-    parser.add_argument("--data_root", type=str, default="data", help="Data root directory, where train and test folders are located")
-    parser.add_argument("--dataset_dir", type=str, default="./dataset", help="Dataset root directory with txt files")
-    parser.add_argument("--log_dir", type=str, default="logs", help="Logging directory")
-    parser.add_argument("--model_dir", type=str, default="models", help="Directory for saving trained models")
-    parser.add_argument("--log_name", type=str, default="autoencoder", help="Logging directory")
-    parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
-    parser.add_argument("--img_size", type=int, default=256, help="Spatial size of training images")
-    parser.add_argument("--max_epochs", type=int, default=8, help="Number of maximum training epochs")
-    parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
-    parser.add_argument("--lr", type=float, default=0.0002, help="Learning rate for optimizer")
-    parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
-    parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
-    parser.add_argument("--gpus", type=int, default=0, help="Number of GPUs. Use 0 for CPU mode")
-    parser.add_argument("--nc", type=int, default=3, help="Number of channels in the training images, e.g. 3 for RGB images")
-    parser.add_argument("--nz", type=int, default=1024, help="Size of latent codes after encoders, i.e. number of feature maps in latent representation")
-    parser.add_argument("--nfe", type=int, default=32, help="Number of feature maps in encoders")
-    parser.add_argument("--nfd", type=int, default=32, help="Number of of feature maps in decoder")
-    parser.add_argument("--aug_min_scale", type=float, default=0.75, help="Minimum scale arg for RandomResizedCrop")
-    parser.add_argument("--aug_max_scale", type=float, default=1.0, help="Maximum scale arg for RandomResizedCrop")
-    parser.add_argument("--aug_rot", type=float, default=5, help="Degrees arg for RandomRotation")
-    parser.add_argument("--aug_bright", type=float, default=0.2, help="Brightness arg for ColorJitter")
-    parser.add_argument("--aug_cont", type=float, default=0.1, help="Contrast arg for ColorJitter")
-
-    args = parser.parse_args()
+    args = parse_args()
     main(args)
