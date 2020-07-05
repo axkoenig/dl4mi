@@ -29,10 +29,6 @@ from args import parse_args
 MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
 STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
 
-# normalization constants for Autoencoder
-MEAN_AE = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
-STD_AE = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
-
 class Classifier(pl.LightningModule):
     def __init__(self, hparams, autoencoder):
         super().__init__()
@@ -61,23 +57,12 @@ class Classifier(pl.LightningModule):
         anomaly = x - reconstructed
 
         # classify anomaly map
-        prediction = self.classifier(anomaly)
+        prediction = self.classifier(anomaly_resnet)
         prediction = F.softmax(prediction)
 
         return {
             "reconstructed": reconstructed,
             "anomaly": anomaly,
-            "prediction": prediction,
-        }
-
-        # classify anomaly map
-        prediction = self.classifier(x)
-        prediction = F.softmax(prediction)
-
-        # TODO: Attention (for now we disregard "reconstructed" and "anomaly") 
-        return {
-            "reconstructed": x,
-            "anomaly": x,
             "prediction": prediction,
         }
 
@@ -155,7 +140,7 @@ class Classifier(pl.LightningModule):
 
     def training_epoch_end(self, outputs):
 
-        print(f"---> metrics for entire train epoch are: \n")
+        print(f"\n---> metrics for entire train epoch are: \n")
         metrics = calc_metrics(self.gt_train, self.pr_train, verbose=True)
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
         logs = {f"train/avg_loss": avg_loss}
@@ -206,7 +191,7 @@ class Classifier(pl.LightningModule):
 
     def _shared_eval_epoch_end(self, outputs, prefix):
 
-        print(f"---> metrics for entire {prefix} epoch are: \n")
+        print(f"\n---> metrics for entire {prefix} epoch are: \n")
         metrics = calc_metrics(self.gt_val, self.pr_val, verbose=True)
         avg_loss = torch.stack([x[f"{prefix}_loss"] for x in outputs]).mean()
         logs = {f"{prefix}/avg_loss": avg_loss}
@@ -223,8 +208,14 @@ def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
     torch.multiprocessing.set_sharing_strategy("file_system")
 
+    # load pretrained autoencoder
+    autoencoder = NormalAE(hparams)
+    autoencoder.load_state_dict(torch.load(hparams.ae_pth, map_location=torch.device("cpu")))
+    autoencoder.eval()
+    freeze(autoencoder)
+
     # create classifier and print summary
-    model = Classifier(hparams)
+    model = Classifier(hparams, autoencoder)
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
     
     trainer = Trainer(
