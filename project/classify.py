@@ -25,7 +25,7 @@ from transforms import Transform
 from utils import calc_metrics, freeze, get_train_sampler
 from args import parse_args
 
-# normalization constants for ResNet 
+# normalization constants 
 MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
 STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
 
@@ -210,7 +210,7 @@ def main(hparams):
 
     # load pretrained autoencoder
     autoencoder = NormalAE(hparams)
-    autoencoder.load_state_dict(torch.load(hparams.ae_pth, map_location=torch.device("cpu")))
+    autoencoder.load_state_dict(torch.load(hparams.pretrained_ae_pth, map_location=torch.device("cpu")))
     autoencoder.eval()
     freeze(autoencoder)
 
