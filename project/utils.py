@@ -97,7 +97,22 @@ def get_train_sampler(dataset, indices):
 
     return sampler
 
-def save_model(model_dir, model_name):
+
+def get_class_weights(dataset, indices, verbose=False):
+    """Returns class weights of a subset defined by indices
+    """
+    
+    # get labels in subset
+    labels = [dataset.targets[i] for i in indices]
+    class_weights = 1 / torch.Tensor([labels.count(0), labels.count(1), labels.count(2),])
+    
+    if verbose:
+        print(f"class weights are: {str(class_weights)}")
+
+    return class_weights
+
+
+def save_model(model, model_dir, model_name):
 
     timestamp = datetime.datetime.now().strftime(format="%d_%m_%Y_%H:%M:%S")
     if not os.path.exists(model_dir):

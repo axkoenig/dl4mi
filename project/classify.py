@@ -17,12 +17,16 @@ from sklearn.model_selection import KFold
 from autoencoder import NormalAE
 from data import COVIDx, TransformableSubset
 from transforms import Transform
-from utils import calc_metrics, freeze, get_train_sampler, save_model
+from utils import calc_metrics, freeze, get_class_weights, save_model
 from args import parse_args
 
 # normalization constants 
 MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
 STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
+
+# variables for rebalancing loss function
+weight_train = None
+weight_val = None
 
 class Classifier(pl.LightningModule):
     def __init__(self, hparams, autoencoder):
@@ -118,7 +122,7 @@ class Classifier(pl.LightningModule):
         imgs, labels = batch
         out = self(imgs)
         predictions = out["prediction"]
-        loss = F.cross_entropy(predictions, labels)
+        loss = F.cross_entropy(predictions, labels, weight=weight_train)
 
         # reset predictions from last epoch
         if batch_idx == 0:
@@ -148,23 +152,26 @@ class Classifier(pl.LightningModule):
         return {"train/avg_loss": avg_loss, "log": logs}
 
     def validation_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, prefix="val")
+        return self._shared_eval(batch, batch_idx, "val")
 
     def validation_epoch_end(self, outputs):
         return self._shared_eval_epoch_end(outputs, "val")
 
     def test_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, prefix="test")
+        return self._shared_eval(batch, batch_idx, "test")
 
     def test_epoch_end(self, outputs):
         return self._shared_eval_epoch_end(outputs, "test")
 
-    def _shared_eval(self, batch, batch_idx, prefix="", plot=False):
+    def _shared_eval(self, batch, batch_idx, prefix, plot=False):
 
         imgs, labels = batch
         out = self(imgs)
         predictions = out["prediction"]
-        loss = F.cross_entropy(predictions, labels)
+        if prefix == "val":
+            loss = F.cross_entropy(predictions, labels, weight=weight_val)
+        elif prefix == "test":
+            loss = F.cross_entropy(predictions, labels)
 
         # at beginning of epoch
         if batch_idx == 0:
@@ -202,10 +209,11 @@ class Classifier(pl.LightningModule):
 def main(hparams):
     logger = loggers.TensorBoardLogger(hparams.log_dir, name=hparams.log_name)
     torch.multiprocessing.set_sharing_strategy("file_system")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # load pretrained autoencoder
     autoencoder = NormalAE(hparams)
-    autoencoder.load_state_dict(torch.load(hparams.pretrained_ae_pth, map_location=torch.device("cpu")))
+    autoencoder.load_state_dict(torch.load(hparams.pretrained_ae_pth, map_location=device))
     autoencoder.eval()
     freeze(autoencoder)
 
@@ -231,13 +239,21 @@ def main(hparams):
     # k fold cross validation
     kfold = KFold(n_splits=hparams.folds)
 
-    for fold, (train_idx, valid_idx) in enumerate(kfold.split(covidx_train)):
+    for fold, (train_idx, val_idx) in enumerate(kfold.split(covidx_train)):
         print(f"training {fold} of {hparams.folds} folds ...")
 
         # split covidx_train further into train and val data
         train_ds = TransformableSubset(covidx_train, train_idx, transform=transform.train)
-        val_ds = TransformableSubset(covidx_train, valid_idx, transform=transform.test)
-        sampler = get_train_sampler(covidx_train, train_idx)
+        val_ds = TransformableSubset(covidx_train, val_idx, transform=transform.test)
+        
+        # calc class weights of current folds
+        global weight_train, weight_val
+        weight_train = get_class_weights(covidx_train, train_idx)
+        weight_val = get_class_weights(covidx_train, val_idx)
+        
+        if torch.cuda.is_available():
+            weight_train.cuda()
+            weight_val.cuda()
 
         train_dl = DataLoader(
             train_ds, 
@@ -255,7 +271,7 @@ def main(hparams):
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
     trainer.test(model)
-    save_model(hparams.models_dir, hparams.log_name)
+    save_model(model, hparams.models_dir, hparams.log_name)
     print("done. have a good day!")
 
 

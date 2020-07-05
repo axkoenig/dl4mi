@@ -140,7 +140,7 @@ def main(hparams):
 
     trainer.fit(model)
     trainer.test(model)
-    save_model(hparams.models_dir, hparams.log_name)
+    save_model(model, hparams.models_dir, hparams.log_name)
     print("done. have a good day!")
 
 
