@@ -11,7 +11,7 @@ def parse_args():
     parser.add_argument("--models_dir", type=str, default="./models", help="Name of models directory for saving")
     parser.add_argument("--log_dir", type=str, default="./logs", help="Logging directory")
     parser.add_argument("--log_name", type=str, default="test", help="Name of logging session")
-    parser.add_argument("--pretrained_ae_pth", type=str, default="models/autoencoder_30_05_2020_16_09_52_bs16_ep40_tl0.0064.pth", help="Path of trained autoencoder")
+    parser.add_argument("--pretrained_ae_pth", type=str, default="models/unet_bs16_ep50_05_07_2020_17_42_48.pth", help="Path of trained autoencoder")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
     parser.add_argument("--debug", type=bool, default=False, help="Debug mode")
     parser.add_argument("--num_sanity_val_steps", type=int, default=0, help="Number of sanity val steps")

@@ -12,13 +12,14 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Subset
 from torchsummary import summary
+from torchvision import models
 from torchvision.datasets import ImageFolder
 
 from args import parse_args
 from data import COVIDxNormal, random_split
 from transforms import Transform
 from unet import UNet
-from utils import save_model
+from utils import save_model, freeze
 
 # normalization constants
 MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
@@ -30,6 +31,13 @@ class NormalAE(pl.LightningModule):
         super().__init__()
         self.hparams = hparams
         self.unet = UNet(in_channels=hparams.nc, out_channels=hparams.nc)
+
+        # vgg for perceptual loss
+        vgg = models.vgg16(pretrained=True)
+        freeze(vgg)
+        
+        # remove high-level features after relu_2_2
+        self.vgg_enc = nn.Sequential(*list(vgg.features)[0:9])
 
     def forward(self, x):
         x = self.unet(x)
@@ -93,28 +101,24 @@ class NormalAE(pl.LightningModule):
         self.logger.experiment.add_image(name, grid)
 
     def training_step(self, batch, batch_idx):
-        imgs, _ = batch
-        output = self(imgs)
-        loss = F.mse_loss(output, imgs)
-
-        # plot input and reconstructed images
-        if batch_idx in self.train_plot_indices:
-            self.plot(imgs, output, "train")
-
-        logs = {f"train/loss": loss}
-        return {f"loss": loss, "log": logs}
+        return self._shared_step(batch, batch_idx, "train", self.train_plot_indices)
 
     def test_step(self, batch, batch_idx):
+        return self._shared_step(batch, batch_idx, "test", [0])
+
+    def _shared_step(self, batch, batch_idx, prefix, plot_indices):
         imgs, _ = batch
         output = self(imgs)
-        loss = F.mse_loss(output, imgs)
+        input_features = self.vgg_enc(imgs)
+        output_features = self.vgg_enc(output)
+        loss = F.mse_loss(output_features, input_features)
 
-        # plot at beginning of epoch
-        if batch_idx == 0:
-            self.plot(imgs, output, "test")
+        if batch_idx in plot_indices:
+            self.plot(imgs, output, prefix)
 
-        logs = {f"test/loss": loss}
-        return {f"test_loss": loss, "log": logs}
+        logs = {f"{prefix}/loss": loss}
+        loss_name = "loss" if prefix == "train" else "test_loss"
+        return {loss_name: loss, "log": logs}
 
     def test_epoch_end(self, outputs):
         avg_loss = torch.stack([x[f"test_loss"] for x in outputs]).mean()

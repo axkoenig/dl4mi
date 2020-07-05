@@ -56,7 +56,7 @@ class Classifier(pl.LightningModule):
         anomaly = x - reconstructed
 
         # classify anomaly map
-        prediction = self.classifier(anomaly_resnet)
+        prediction = self.classifier(anomaly)
         prediction = F.softmax(prediction)
 
         return {
@@ -152,13 +152,13 @@ class Classifier(pl.LightningModule):
         return {"train/avg_loss": avg_loss, "log": logs}
 
     def validation_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, "val")
+        return self._shared_eval(batch, batch_idx, "val", plot=True)
 
     def validation_epoch_end(self, outputs):
         return self._shared_eval_epoch_end(outputs, "val")
 
     def test_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, "test")
+        return self._shared_eval(batch, batch_idx, "test", plot=True)
 
     def test_epoch_end(self, outputs):
         return self._shared_eval_epoch_end(outputs, "test")
@@ -257,8 +257,7 @@ def main(hparams):
 
         train_dl = DataLoader(
             train_ds, 
-            batch_size=hparams.batch_size, 
-            sampler=sampler, 
+            batch_size=hparams.batch_size,
             num_workers=hparams.num_workers,
         )
 
