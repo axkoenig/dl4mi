@@ -22,8 +22,8 @@ from unet import UNet
 from utils import save_model, freeze
 
 # normalization constants
-MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
-STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
+MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
+STD = torch.tensor([0.16, 0.16, 0.16], dtype=torch.float32)
 
 
 class NormalAE(pl.LightningModule):
