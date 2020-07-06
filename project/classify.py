@@ -21,12 +21,13 @@ from utils import calc_metrics, freeze, get_class_weights, save_model
 from args import parse_args
 
 # normalization constants 
-MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
-STD = torch.tensor([0.16, 0.16, 0.16], dtype=torch.float32)
+MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
+STD = torch.tensor([0.3, 0.3, 0.3], dtype=torch.float32)
 
 # variables for rebalancing loss function
 weight_train = None
 weight_val = None
+
 
 class Classifier(pl.LightningModule):
     def __init__(self, hparams, autoencoder):
