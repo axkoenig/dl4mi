@@ -34,6 +34,7 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=0.0002, help="Learning rate for optimizer")
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
+    parser.add_argument("--alpha", type=float, default=1.0, help="Scaling parameter for reconstruction loss")
     
     # data augmentation
     parser.add_argument("--aug_min_scale", type=float, default=0.75, help="Minimum scale arg for RandomResizedCrop")
