@@ -32,13 +32,6 @@ class NormalAE(pl.LightningModule):
         self.hparams = hparams
         self.unet = UNet(in_channels=hparams.nc, out_channels=hparams.nc)
 
-        # vgg for perceptual loss
-        vgg = models.vgg16(pretrained=True)
-        freeze(vgg)
-        
-        # remove high-level features after relu_2_2
-        self.vgg_enc = nn.Sequential(*list(vgg.features)[0:9])
-
     def forward(self, x):
         x = self.unet(x)
         return x
@@ -109,9 +102,7 @@ class NormalAE(pl.LightningModule):
     def _shared_step(self, batch, batch_idx, prefix, plot_indices):
         imgs, _ = batch
         output = self(imgs)
-        input_features = self.vgg_enc(imgs)
-        output_features = self.vgg_enc(output)
-        loss = F.mse_loss(output_features, input_features)
+        loss = F.mse_loss(imgs, output)
 
         if batch_idx in plot_indices:
             self.plot(imgs, output, prefix)
