@@ -23,7 +23,7 @@ from utils import save_model, freeze
 
 # normalization constants
 MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
-STD = torch.tensor([0.3, 0.3, 0.3], dtype=torch.float32)
+STD = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
 
 
 class NormalAE(pl.LightningModule):

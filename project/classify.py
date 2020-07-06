@@ -22,7 +22,7 @@ from args import parse_args
 
 # normalization constants 
 MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
-STD = torch.tensor([0.3, 0.3, 0.3], dtype=torch.float32)
+STD = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
 
 # variables for rebalancing loss function
 weight_train = None
