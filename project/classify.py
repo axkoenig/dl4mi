@@ -163,7 +163,7 @@ class Classifier(pl.LightningModule):
         return {"train/avg_loss": avg_loss, "log": logs}
 
     def validation_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, "val", plot=True)
+        return self._shared_eval(batch, batch_idx, "val")
 
     def validation_epoch_end(self, outputs):
         return self._shared_eval_epoch_end(outputs, "val")
