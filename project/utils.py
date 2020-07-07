@@ -50,6 +50,13 @@ def calc_metrics(labels, predictions, verbose=False):
     return eval_metrics
 
 
+def scale_to_01(img, channels=3):
+    # channel wise scaling to range [0,1]
+    # this is an inplace operation! 
+    for i in range(channels):
+        img[i, :, :] -= img[i, :, :].min()
+        img[i, :, :] /= img[i, :, :].max()
+
 def plot_dataset(dataset, MEAN, STD, n=6):
     # retrieve random images from dataset
     choice = np.random.randint(len(dataset), size=n)

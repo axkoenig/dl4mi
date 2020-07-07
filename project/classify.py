@@ -17,12 +17,14 @@ from sklearn.model_selection import KFold
 from autoencoder import NormalAE
 from data import COVIDx, TransformableSubset
 from transforms import Transform
-from utils import calc_metrics, freeze, get_class_weights, save_model
+from utils import calc_metrics, freeze, get_class_weights, save_model, scale_to_01
 from args import parse_args
 
 # normalization constants 
 MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
 STD = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
+MEAN_IMAGENET = [0.485, 0.456, 0.406]
+STD_IMAGENET = [0.229, 0.224, 0.225]
 
 # variables for rebalancing loss function
 weight_train = None
@@ -51,11 +53,19 @@ class Classifier(pl.LightningModule):
         num_classes = 3
         self.classifier.fc = nn.Linear(num_features, num_classes)
 
+        # resnet requires imagenet normalization
+        self.imagenet_norm = transforms.Normalize(MEAN_IMAGENET, STD_IMAGENET)
+
     def forward(self, x):
         # create anomaly map
         reconstructed = self.autoencoder(x)
         anomaly = x - reconstructed
 
+        # scale all anomaly maps in batch to range [0,1]
+        for i in range(anomaly.shape[0]):
+            scale_to_01(anomaly[i])
+            anomaly[i] = self.imagenet_norm(anomaly[i])
+        
         # classify anomaly map
         prediction = self.classifier(anomaly)
         prediction = F.softmax(prediction)
