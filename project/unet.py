@@ -55,9 +55,6 @@ class MulittaskUNet(nn.Module):
         fc1 = self.fc1(pooled)
         fc2 = self.fc2(fc1)
         prediction = self.softmax(fc2)
-        import pdb
-
-        pdb.set_trace()
         # END
 
         dec4 = self.upconv4(bottleneck)
