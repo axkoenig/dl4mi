@@ -4,6 +4,7 @@ import torch
 import torch.multiprocessing
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.utils as vutils
 import torchvision.transforms as transforms
 from pytorch_lightning import Trainer, loggers
 from torch.optim import Adam
