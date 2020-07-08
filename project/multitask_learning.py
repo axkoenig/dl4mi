@@ -21,8 +21,8 @@ from args import parse_args
 from unet import MulittaskUNet
 
 # normalization constants 
-MEAN = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32)
-STD = torch.tensor([0.16, 0.16, 0.16], dtype=torch.float32)
+MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
+STD = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
 
 # variables for rebalancing loss function
 weight_train = None
