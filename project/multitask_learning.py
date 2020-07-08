@@ -178,7 +178,7 @@ def main(hparams):
 
     # create classifier and print summary
     model = Classifier(hparams)
-    summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
+    # summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
     
     trainer = Trainer(
         logger=logger,
