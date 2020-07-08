@@ -84,7 +84,7 @@ class Classifier(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         imgs, labels = batch
         predictions, reconstruction = self(imgs)
-        class_loss = F.cross_entropy(predictions, labels, weight=weight_train)
+        class_loss = F.cross_entropy(predictions, labels, weight=weight_train.cuda())
         rec_loss = F.mse_loss(reconstruction, imgs)
         loss = class_loss + self.hparams.alpha * rec_loss
 
@@ -132,7 +132,7 @@ class Classifier(pl.LightningModule):
         predictions, reconstruction = self(imgs)
 
         if prefix == "val":
-            class_loss = F.cross_entropy(predictions, labels, weight=weight_val)
+            class_loss = F.cross_entropy(predictions, labels, weight=weight_val.cuda())
         elif prefix == "test":
             class_loss = F.cross_entropy(predictions, labels)
 
