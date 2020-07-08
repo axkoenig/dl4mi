@@ -50,11 +50,20 @@ def calc_metrics(labels, predictions, verbose=False):
     return eval_metrics
 
 
-def scale_to_01(img):
+def scale_channels_to_01(img, channels=3):
+    # channel wise scaling to range [0,1]
+    # this is an inplace operation!
+    for i in range(channels):
+        img[i, :, :] -= img[i, :, :].min()
+        img[i, :, :] /= img[i, :, :].max()
+
+
+def scale_img_to_01(img):
     # scale whole image to range [0,1]
     # this is an inplace operation!
     img -= img.min()
     img /= img.max()
+
 
 def plot_dataset(dataset, MEAN, STD, n=6):
     # retrieve random images from dataset
@@ -107,11 +116,11 @@ def get_train_sampler(dataset, indices):
 def get_class_weights(dataset, indices, verbose=False):
     """Returns class weights of a subset defined by indices
     """
-    
+
     # get labels in subset
     labels = [dataset.targets[i] for i in indices]
     class_weights = 1 / torch.Tensor([labels.count(0), labels.count(1), labels.count(2),])
-    
+
     if verbose:
         print(f"class weights are: {str(class_weights)}")
 
@@ -126,6 +135,6 @@ def save_model(model, model_dir, model_name):
         print(f"created directory {model_dir}")
 
     save_path = os.path.join(model_dir, model_name + "_" + timestamp + ".pth")
-    
+
     print(f"saving model to {save_path}...")
     torch.save(model.state_dict(), save_path)

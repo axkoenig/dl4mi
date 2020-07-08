@@ -17,10 +17,10 @@ from sklearn.model_selection import KFold
 from autoencoder import NormalAE
 from data import COVIDx, TransformableSubset
 from transforms import Transform
-from utils import calc_metrics, freeze, get_class_weights, save_model, scale_to_01
+from utils import calc_metrics, freeze, get_class_weights, save_model, scale_channels_to_01
 from args import parse_args
 
-# normalization constants 
+# normalization constants
 MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
 STD = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
 MEAN_IMAGENET = [0.485, 0.456, 0.406]
@@ -63,9 +63,9 @@ class Classifier(pl.LightningModule):
 
         # scale all anomaly maps in batch to range [0,1]
         for i in range(anomaly.shape[0]):
-            scale_to_01(anomaly[i])
+            scale_channels_to_01(anomaly[i])
             anomaly[i] = self.imagenet_norm(anomaly[i])
-        
+
         # classify anomaly map
         prediction = self.classifier(anomaly)
         prediction = F.softmax(prediction)
@@ -231,7 +231,7 @@ def main(hparams):
     # create classifier and print summary
     model = Classifier(hparams, autoencoder)
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
-    
+
     trainer = Trainer(
         logger=logger,
         gpus=hparams.gpus,
@@ -239,7 +239,7 @@ def main(hparams):
         num_sanity_val_steps=hparams.num_sanity_val_steps,
         weights_summary=None,
     )
-    
+
     # retrieve COVIDx_v3 train dataset from COVID-Net paper
     covidx_train = COVIDx("train", hparams.data_root, hparams.dataset_dir)
     transform = Transform(MEAN.tolist(), STD.tolist(), hparams)
@@ -256,27 +256,19 @@ def main(hparams):
         # split covidx_train further into train and val data
         train_ds = TransformableSubset(covidx_train, train_idx, transform=transform.train)
         val_ds = TransformableSubset(covidx_train, val_idx, transform=transform.test)
-        
+
         # calc class weights of current folds
         global weight_train, weight_val
         weight_train = get_class_weights(covidx_train, train_idx)
         weight_val = get_class_weights(covidx_train, val_idx)
-        
+
         if torch.cuda.is_available():
             weight_train.cuda()
             weight_val.cuda()
 
-        train_dl = DataLoader(
-            train_ds, 
-            batch_size=hparams.batch_size,
-            num_workers=hparams.num_workers,
-        )
+        train_dl = DataLoader(train_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,)
 
-        val_dl = DataLoader(
-            val_ds, 
-            batch_size=hparams.batch_size, 
-            num_workers=hparams.num_workers,
-        )
+        val_dl = DataLoader(val_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,)
 
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
 
