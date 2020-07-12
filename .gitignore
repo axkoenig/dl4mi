@@ -1,16 +1,12 @@
 # Custom 
-*.texpadtmp*
 .vscode 
-.DS_Store
 *.pth
 *.png
 *.code-workspace
 *logs*
 *.jpg
 *.jpeg
-*__pycache__/
-*.pth
-*.icloud
+*.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
