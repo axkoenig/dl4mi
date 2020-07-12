@@ -102,7 +102,7 @@ def plot_anomaly_maps_by_label(dl, autoencoder):
         anomaly = orig - rec
         origs = torch.cat([origs, orig], dim=0)
 
-        for i in range(anomaly.shape[0]):
+        for i in range(len(labels)):
             scale_img_to_01(anomaly[i])
             if labels[i] == 0:
                 normal_anomalies = torch.cat([normal_anomalies, anomaly[i].unsqueeze(0)], dim=0)
@@ -113,24 +113,53 @@ def plot_anomaly_maps_by_label(dl, autoencoder):
 
     print("image order: \ntop row normal cases \nmiddle pneumonia \nbottom covid")
     all_imgs = torch.cat([origs, normal_anomalies, pneumonia_anomalies, covid_anomalies], dim=0)
-    num_imgs_per_class = 100
-    grid = utils.make_grid(all_imgs, nrow=num_imgs_per_class)
+    num_imgs_per_row = 100
+    grid = utils.make_grid(all_imgs, nrow=num_imgs_per_row)
     plot_tensor(grid, save=True, save_pth="/Users/koenig/Desktop/plot_all_classes.png")
 
 
-def plot_tensor(grid, save=False, save_pth="", dpi=2000):
+def plot_orig_rec_ano_by_specific_label(dl, autoencoder, label=2):
+    print("---STARTING TO ALL IMAGES BY SPECIFIC LABEL---")
+
+    origs = torch.tensor([])
+    recs = torch.tensor([])
+    anomalies = torch.tensor([])
+
+    for idx, (orig, labels) in enumerate(dl):
+
+        for i in range(len(labels)):
+            if labels[i] == label:
+                rec = autoencoder(orig[i].unsqueeze(0))
+                anomaly = orig[i].unsqueeze(0) - rec
+                scale_img_to_01(anomaly)
+                
+                origs = torch.cat([origs, orig[i].unsqueeze(0)], dim=0)
+                recs = torch.cat([recs, rec], dim=0)
+                anomalies = torch.cat([anomalies, anomaly], dim=0)
+
+    print("image order: \ntop original images \nreconstructed images \nanomaly maps")
+    all_imgs = torch.cat([origs, recs, anomalies], dim=0)
+    num_imgs_per_row = 100
+    grid = utils.make_grid(all_imgs, nrow=num_imgs_per_row)
+    plot_tensor(grid, save=True, save_pth=f"/Users/koenig/Desktop/all_imgs_for_label{label}.png", figsize=(10.0, 0.3))
+
+
+def plot_tensor(grid, save=False, save_pth="", dpi=2000, figsize=(10.0, 0.6)):
     t = transforms.ToPILImage()
     arr = np.asarray(t(grid))
 
-    fig = plt.figure(figsize=(10.0, 0.6), frameon=False)
+    fig = plt.figure(figsize=figsize, frameon=False)
     ax = plt.Axes(fig, [0.0, 0.0, 1.0, 1.0])
     ax.set_axis_off()
     fig.add_axes(ax)
     ax.imshow(arr, aspect="auto")
 
     if save == True:
+        print(f"saving image to {save_pth}...")
         fig.savefig(save_pth, dpi=dpi)
-    plt.show()
+    else: 
+        print("showing image...")
+        plt.show()
 
 
 def main(hparams):
@@ -148,7 +177,8 @@ def main(hparams):
     dl = DataLoader(covidx_test, batch_size=hparams.batch_size, num_workers=hparams.num_workers,)
 
     # sanity check
-    plot_anomaly_maps_by_label(dl, autoencoder)
+    plot_orig_rec_ano_by_specific_label(dl, autoencoder)
+    print("done.")
 
 
 if __name__ == "__main__":
