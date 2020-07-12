@@ -179,6 +179,7 @@ class Classifier(pl.LightningModule):
         imgs, labels = batch
         out = self(imgs)
         predictions = out["prediction"]
+
         if prefix == "val":
             loss = F.cross_entropy(predictions, labels, weight=weight_val)
         elif prefix == "test":
@@ -270,8 +271,8 @@ def main(hparams):
         val_dl = DataLoader(val_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,)
 
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
-        
-        # iteratively increase max epochs of trainer 
+
+        # iteratively increase max epochs of trainer
         trainer.max_epochs += hparams.epochs_per_fold
         model.current_epoch += 1
 

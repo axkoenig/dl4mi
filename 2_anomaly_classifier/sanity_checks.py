@@ -131,7 +131,7 @@ def plot_orig_rec_ano_by_specific_label(dl, autoencoder, label=2):
                 rec = autoencoder(orig[i].unsqueeze(0))
                 anomaly = orig[i].unsqueeze(0) - rec
                 scale_img_to_01(anomaly)
-                
+
                 origs = torch.cat([origs, orig[i].unsqueeze(0)], dim=0)
                 recs = torch.cat([recs, rec], dim=0)
                 anomalies = torch.cat([anomalies, anomaly], dim=0)
@@ -140,7 +140,9 @@ def plot_orig_rec_ano_by_specific_label(dl, autoencoder, label=2):
     all_imgs = torch.cat([origs, recs, anomalies], dim=0)
     num_imgs_per_row = 100
     grid = utils.make_grid(all_imgs, nrow=num_imgs_per_row)
-    plot_tensor(grid, save=True, save_pth=f"/Users/koenig/Desktop/all_imgs_for_label{label}.png", figsize=(10.0, 0.3))
+    plot_tensor(
+        grid, save=True, save_pth=f"/Users/koenig/Desktop/all_imgs_for_label{label}.png", figsize=(10.0, 0.3)
+    )
 
 
 def plot_tensor(grid, save=False, save_pth="", dpi=2000, figsize=(10.0, 0.6)):
@@ -156,7 +158,7 @@ def plot_tensor(grid, save=False, save_pth="", dpi=2000, figsize=(10.0, 0.6)):
     if save == True:
         print(f"saving image to {save_pth}...")
         fig.savefig(save_pth, dpi=dpi)
-    else: 
+    else:
         print("showing image...")
         plt.show()
 

@@ -16,28 +16,22 @@ from sklearn.model_selection import KFold
 
 from common.data import COVIDx, TransformableSubset
 from common.transforms import Transform
-from common.utils import calc_metrics, freeze, get_class_weights, save_model, scale_channels_to_01
+from common.utils import calc_metrics, freeze, get_class_weights, save_model
 from common.args import parse_args
-from autoencoder import NormalAE
 
-# normalization constants
-MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
-STD = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
-MEAN_IMAGENET = [0.485, 0.456, 0.406]
-STD_IMAGENET = [0.229, 0.224, 0.225]
+# normalization constants (from imagenet)
+MEAN = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float32)
+STD = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float32)
 
 # variables for rebalancing loss function
 weight_train = None
 weight_val = None
 
-TRAIN_WEIGHTS = []
-VAL_WEIGHTS = []
 
 class Classifier(pl.LightningModule):
-    def __init__(self, hparams, autoencoder):
+    def __init__(self, hparams):
         super().__init__()
         self.hparams = hparams
-        self.autoencoder = autoencoder
 
         # variables to save model predictions
         self.gt_train = []
@@ -55,28 +49,11 @@ class Classifier(pl.LightningModule):
         num_classes = 3
         self.classifier.fc = nn.Linear(num_features, num_classes)
 
-        # resnet requires imagenet normalization
-        self.imagenet_norm = transforms.Normalize(MEAN_IMAGENET, STD_IMAGENET)
-
     def forward(self, x):
-        # create anomaly map
-        reconstructed = self.autoencoder(x)
-        anomaly = x - reconstructed
-
-        # scale all anomaly maps in batch to range [0,1]
-        for i in range(anomaly.shape[0]):
-            scale_channels_to_01(anomaly[i])
-            anomaly[i] = self.imagenet_norm(anomaly[i])
-
-        # classify anomaly map
-        prediction = self.classifier(anomaly)
-        prediction = F.softmax(prediction)
-
-        return {
-            "reconstructed": reconstructed,
-            "anomaly": anomaly,
-            "prediction": prediction,
-        }
+        # classify image directly
+        prediction = self.classifier(x)
+        prediction = F.softmax(prediction, dim=1)
+        return prediction
 
     def test_dataloader(self):
         transform = Transform(MEAN.tolist(), STD.tolist(), self.hparams)
@@ -91,55 +68,10 @@ class Classifier(pl.LightningModule):
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=self.hparams.lr, betas=(self.hparams.beta1, self.hparams.beta2),)
 
-    def plot(self, x, r, a, prefix, n=4):
-        """Plots n triplets of (original image, reconstr. image, anomaly map)
-
-        Args:
-            x (tensor): Batch of input images
-            r (tensor): Batch of reconstructed images
-            a (tensor): Batch of anomaly maps
-            prefix (str): Prefix for plot name 
-            n (int, optional): How many triplets to plot. Defaults to 16.
-
-        Raises:
-            IndexError: If n exceeds batch size
-        """
-
-        if x.shape[0] < n:
-            raise IndexError("You are attempting to plot more images than your batch contains!")
-
-        # denormalize images
-        denormalization = transforms.Normalize((-MEAN / STD).tolist(), (1.0 / STD).tolist())
-        x = [denormalization(i) for i in x[:n]]
-        r = [denormalization(i) for i in r[:n]]
-        a = [denormalization(i) for i in a[:n]]
-
-        # create empty plot and send to device
-        plot = torch.tensor([], device=x[0].device)
-
-        for i in range(n):
-
-            grid = utils.make_grid([x[i], r[i], a[i]], 1)
-            plot = torch.cat((plot, grid), 2)
-
-            # add offset between image triplets
-            if n > 1 and i < n - 1:
-                border_width = 6
-                border = torch.zeros(plot.shape[0], plot.shape[1], border_width, device=x[0].device)
-                plot = torch.cat((plot, border), 2)
-
-        name = f"{prefix}_input_reconstr_anomaly_images"
-        self.logger.experiment.add_image(name, plot)
-
     def training_step(self, batch, batch_idx):
         imgs, labels = batch
-        out = self(imgs)
-        predictions = out["prediction"]
-<<<<<<< HEAD:2_anomaly_classifier/classifier.py
+        predictions = self(imgs)
         loss = F.cross_entropy(predictions, labels, weight=weight_train)
-=======
-        loss = F.cross_entropy(predictions, labels, weight=TRAIN_WEIGHTS.cuda())
->>>>>>> feature/resnet_baseline_loss_weighting:1_resnet_baseline/classifier.py
 
         # reset predictions from last epoch
         if batch_idx == 0:
@@ -175,24 +107,18 @@ class Classifier(pl.LightningModule):
         return self._shared_eval_epoch_end(outputs, "val")
 
     def test_step(self, batch, batch_idx):
-        return self._shared_eval(batch, batch_idx, "test", plot=True)
+        return self._shared_eval(batch, batch_idx, "test")
 
     def test_epoch_end(self, outputs):
         return self._shared_eval_epoch_end(outputs, "test")
 
-    def _shared_eval(self, batch, batch_idx, prefix, plot=False):
+    def _shared_eval(self, batch, batch_idx, prefix=""):
 
         imgs, labels = batch
-        out = self(imgs)
-        predictions = out["prediction"]
-<<<<<<< HEAD:2_anomaly_classifier/classifier.py
-        if prefix == "val":
-            loss = F.cross_entropy(predictions, labels, weight=weight_val)
-=======
+        predictions = self(imgs)
 
         if prefix == "val":
-            loss = F.cross_entropy(predictions, labels, weight=VAL_WEIGHTS.cuda())
->>>>>>> feature/resnet_baseline_loss_weighting:1_resnet_baseline/classifier.py
+            loss = F.cross_entropy(predictions, labels, weight=weight_val)
         elif prefix == "test":
             loss = F.cross_entropy(predictions, labels)
 
@@ -202,9 +128,6 @@ class Classifier(pl.LightningModule):
             # reset predictions from last epoch
             self.gt_val = []
             self.pr_val = []
-
-            if plot:
-                self.plot(imgs, out["reconstructed"], out["anomaly"], prefix)
 
         # save labels and predictions for evaluation
         max_indices = torch.max(predictions, 1).indices
@@ -216,7 +139,7 @@ class Classifier(pl.LightningModule):
 
     def _shared_eval_epoch_end(self, outputs, prefix):
 
-        print(f"\n---> metrics for entire {prefix} epoch are: \n")
+        print(f"\n---> metrics for entire train epoch are: \n")
         metrics = calc_metrics(self.gt_val, self.pr_val, verbose=True)
         avg_loss = torch.stack([x[f"{prefix}_loss"] for x in outputs]).mean()
         logs = {f"{prefix}/avg_loss": avg_loss}
@@ -234,14 +157,8 @@ def main(hparams):
     torch.multiprocessing.set_sharing_strategy("file_system")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # load pretrained autoencoder
-    autoencoder = NormalAE(hparams)
-    autoencoder.load_state_dict(torch.load(hparams.pretrained_ae_pth, map_location=device))
-    autoencoder.eval()
-    freeze(autoencoder)
-
     # create classifier and print summary
-    model = Classifier(hparams, autoencoder)
+    model = Classifier(hparams)
     summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
 
     trainer = Trainer(
@@ -267,24 +184,7 @@ def main(hparams):
 
         # split covidx_train further into train and val data
         train_ds = TransformableSubset(covidx_train, train_idx, transform=transform.train)
-<<<<<<< HEAD:2_anomaly_classifier/classifier.py
         val_ds = TransformableSubset(covidx_train, val_idx, transform=transform.test)
-=======
-        val_ds = TransformableSubset(covidx_train, valid_idx, transform=transform.test)
-        
-        # weights for loss function
-        _, train_weights = get_train_sampler(covidx_train, train_idx)
-        _, val_weights = get_train_sampler(covidx_train, valid_idx)
-        global TRAIN_WEIGHTS, VAL_WEIGHTS
-        TRAIN_WEIGHTS = train_weights
-        VAL_WEIGHTS = val_weights
-
-        train_dl = DataLoader(
-            train_ds, 
-            batch_size=hparams.batch_size,
-            num_workers=hparams.num_workers,
-        )
->>>>>>> feature/resnet_baseline_loss_weighting:1_resnet_baseline/classifier.py
 
         # calc class weights of current folds
         global weight_train, weight_val
@@ -299,8 +199,8 @@ def main(hparams):
         val_dl = DataLoader(val_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,)
 
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
-        
-        # iteratively increase max epochs of trainer 
+
+        # iteratively increase max epochs of trainer
         trainer.max_epochs += hparams.epochs_per_fold
         model.current_epoch += 1
 
