@@ -19,9 +19,9 @@ def parse_args():
     parser.add_argument("--gpus", type=int, default=0, help="Number of GPUs. Use 0 for CPU mode")
     
     # training parameters
-    parser.add_argument("--max_epochs", type=int, default=4, help="Number of maximum training epochs")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
     parser.add_argument("--folds", type=int, default=10, help="How many folds to use for cross validation")
+    parser.add_argument("--epochs_per_fold", type=int, default=5, help="Number of training epochs in each fold")
 
     # architecture 
     parser.add_argument("--img_size", type=int, default=224, help="Spatial size of training images")

@@ -133,7 +133,7 @@ class Classifier(pl.LightningModule):
         imgs, labels = batch
         out = self(imgs)
         predictions = out["prediction"]
-        loss = F.cross_entropy(predictions, labels, weight=weight_train.cuda())
+        loss = F.cross_entropy(predictions, labels, weight=weight_train)
 
         # reset predictions from last epoch
         if batch_idx == 0:
@@ -180,7 +180,7 @@ class Classifier(pl.LightningModule):
         out = self(imgs)
         predictions = out["prediction"]
         if prefix == "val":
-            loss = F.cross_entropy(predictions, labels, weight=weight_val.cuda())
+            loss = F.cross_entropy(predictions, labels, weight=weight_val)
         elif prefix == "test":
             loss = F.cross_entropy(predictions, labels)
 
@@ -235,7 +235,7 @@ def main(hparams):
     trainer = Trainer(
         logger=logger,
         gpus=hparams.gpus,
-        max_epochs=hparams.max_epochs,
+        max_epochs=hparams.epochs_per_fold,
         num_sanity_val_steps=hparams.num_sanity_val_steps,
         weights_summary=None,
     )
@@ -263,14 +263,16 @@ def main(hparams):
         weight_val = get_class_weights(covidx_train, val_idx)
 
         if torch.cuda.is_available():
-            weight_train.cuda()
-            weight_val.cuda()
+            weight_train = weight_train.cuda()
+            weight_val = weight_val.cuda()
 
         train_dl = DataLoader(train_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,)
-
         val_dl = DataLoader(val_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,)
 
         trainer.fit(model, train_dataloader=train_dl, val_dataloaders=val_dl)
+        
+        # iteratively increase max epochs of trainer 
+        trainer.max_epochs += hparams.epochs_per_fold
 
     trainer.test(model)
     save_model(model, hparams.models_dir, hparams.log_name)
