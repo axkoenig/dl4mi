@@ -5,13 +5,12 @@ from torchvision import transforms, utils
 import matplotlib.pyplot as plt
 import numpy as np
 
+from common.utils import freeze, scale_img_to_01
+from common.transforms import Transform
+from common.args import parse_args
+from common.data import COVIDx
 from unet import UNet
-from utils import freeze
-from transforms import Transform
-from args import parse_args
-from data import COVIDx
 from autoencoder import NormalAE
-from utils import scale_img_to_01
 
 MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
 STD = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
