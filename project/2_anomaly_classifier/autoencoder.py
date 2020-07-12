@@ -7,19 +7,17 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from pytorch_lightning import Trainer, loggers
-from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.optim import Adam
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 from torchsummary import summary
 from torchvision import models
-from torchvision.datasets import ImageFolder
 
-from args import parse_args
-from data import COVIDxNormal, random_split
-from transforms import Transform
+from common.args import parse_args
+from common.data import COVIDxNormal, random_split
+from common.transforms import Transform
+from common.utils import save_model, freeze
 from unet import UNet
-from utils import save_model, freeze
 
 # normalization constants
 MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
