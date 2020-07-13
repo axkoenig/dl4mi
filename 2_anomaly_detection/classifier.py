@@ -275,6 +275,7 @@ def main(hparams):
         # iteratively increase max epochs of trainer
         trainer.max_epochs += hparams.epochs_per_fold
         model.current_epoch += 1
+        trainer.current_epoch += 1
 
     trainer.test(model)
     save_model(model, hparams.models_dir, hparams.log_name)
