@@ -7,6 +7,5 @@ Create virtual environment and follow these steps.
 
 ```bash
 git clone git@github.com:axkoenig/dl4mi.git
-cd dl4mi
-pip install -e .
+pip install -e dl4mi
 ```
