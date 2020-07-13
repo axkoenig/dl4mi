@@ -68,7 +68,7 @@ class Classifier(pl.LightningModule):
 
         # classify anomaly map
         prediction = self.classifier(anomaly)
-        prediction = F.softmax(prediction)
+        prediction = F.softmax(prediction, dim=1)
 
         return {
             "reconstructed": reconstructed,
