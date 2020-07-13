@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
     parser.add_argument("--folds", type=int, default=10, help="How many folds to use for cross validation")
     parser.add_argument("--epochs_per_fold", type=int, default=5, help="Number of training epochs in each fold")
-    parser.add_argument("--max_epochs", type=int, default=10, help="Number of training epochs in each fold")
+    parser.add_argument("--max_epochs", type=int, default=10, help="Number of training epochs (only used in 2_anomaly_detection/autoencoder.py)")
 
     # architecture
     parser.add_argument("--img_size", type=int, default=224, help="Spatial size of training images")
@@ -35,6 +35,7 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=0.0002, help="Learning rate for optimizer")
     parser.add_argument("--beta1", type=float, default=0.9, help="Beta1 hyperparameter for Adam optimizer")
     parser.add_argument("--beta2", type=float, default=0.999, help="Beta2 hyperparameter for Adam optimizer")
+    parser.add_argument("--alpha", type=float, default=0.5, help="Weight of reconstruction loss (only used in 3_multitask_learning/classifier.py)")
 
     # data augmentation
     parser.add_argument("--aug_min_scale", type=float, default=0.75, help="Minimum scale arg for RandomResizedCrop")
