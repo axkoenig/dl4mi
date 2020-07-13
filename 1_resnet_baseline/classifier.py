@@ -139,7 +139,7 @@ class Classifier(pl.LightningModule):
 
     def _shared_eval_epoch_end(self, outputs, prefix):
 
-        print(f"\n---> metrics for entire train epoch are: \n")
+        print(f"\n---> metrics for entire {prefix} epoch are: \n")
         metrics = calc_metrics(self.gt_val, self.pr_val, verbose=True)
         avg_loss = torch.stack([x[f"{prefix}_loss"] for x in outputs]).mean()
         logs = {f"{prefix}/avg_loss": avg_loss}
