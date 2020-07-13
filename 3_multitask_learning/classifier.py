@@ -15,11 +15,11 @@ from torchvision.datasets import ImageFolder
 from torchvision import models
 from sklearn.model_selection import KFold
 
-from data import COVIDx, TransformableSubset
-from transforms import Transform
-from utils import calc_metrics, freeze, get_class_weights, save_model
-from args import parse_args
-from unet import MulittaskUNet
+from common.data import COVIDx, TransformableSubset
+from common.transforms import Transform
+from common.utils import calc_metrics, freeze, get_class_weights, save_model
+from common.args import parse_args
+from multitask_unet import MulittaskUNet
 
 # normalization constants
 MEAN = torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32)
@@ -85,7 +85,7 @@ class Classifier(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         imgs, labels = batch
         predictions, reconstruction = self(imgs)
-        class_loss = F.cross_entropy(predictions, labels, weight=weight_train.cuda())
+        class_loss = F.cross_entropy(predictions, labels, weight=weight_train)
         rec_loss = F.mse_loss(reconstruction, imgs)
         loss = class_loss + self.hparams.alpha * rec_loss
 
@@ -133,7 +133,7 @@ class Classifier(pl.LightningModule):
         predictions, reconstruction = self(imgs)
 
         if prefix == "val":
-            class_loss = F.cross_entropy(predictions, labels, weight=weight_val.cuda())
+            class_loss = F.cross_entropy(predictions, labels, weight=weight_val)
         elif prefix == "test":
             class_loss = F.cross_entropy(predictions, labels)
 
@@ -180,14 +180,12 @@ def main(hparams):
 
     # create classifier and print summary
     model = Classifier(hparams)
-    # summary(model, (hparams.nc, hparams.img_size, hparams.img_size), device="cpu")
 
     trainer = Trainer(
         logger=logger,
         gpus=hparams.gpus,
         max_epochs=hparams.epochs_per_fold,
         num_sanity_val_steps=hparams.num_sanity_val_steps,
-        weights_summary=None,
     )
 
     # retrieve COVIDx_v3 train dataset from COVID-Net paper
@@ -213,8 +211,8 @@ def main(hparams):
         weight_val = get_class_weights(covidx_train, val_idx)
 
         if torch.cuda.is_available():
-            weight_train.cuda()
-            weight_val.cuda()
+            weight_train = weight_train.cuda()
+            weight_val = weight_val.cuda()
 
         train_dl = DataLoader(train_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,)
         val_dl = DataLoader(val_ds, batch_size=hparams.batch_size, num_workers=hparams.num_workers,)
