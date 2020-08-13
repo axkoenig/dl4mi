@@ -11,7 +11,7 @@ def parse_args():
     parser.add_argument("--models_dir", type=str, default="../models", help="Name of models directory for saving")
     parser.add_argument("--log_dir", type=str, default="../logs", help="Logging directory")
     parser.add_argument("--log_name", type=str, default="test", help="Name of logging session")
-    parser.add_argument("--pretrained_ae_pth", type=str, default="models/unet_bs16_ep50_05_07_2020_17_42_48.pth", help="Path of trained autoencoder")
+    parser.add_argument("--pretrained_ae_pth", type=str, default="models/unet_bs16_ep50_05_07_2020_17_42_48.pth", help="Path of trained autoencoder (only used in 2_anomaly_detection/autoencoder.py)")
     parser.add_argument("--num_workers", type=int, default=4, help="num_workers > 0 turns on multi-process data loading")
     parser.add_argument("--debug", type=bool, default=False, help="Debug mode")
     parser.add_argument("--num_sanity_val_steps", type=int, default=0, help="Number of sanity val steps")
@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size during training")
     parser.add_argument("--folds", type=int, default=10, help="How many folds to use for cross validation")
     parser.add_argument("--epochs_per_fold", type=int, default=5, help="Number of training epochs in each fold")
-    parser.add_argument("--max_epochs", type=int, default=10, help="Number of training epochs (only used in 2_anomaly_detection/autoencoder.py)")
+    parser.add_argument("--max_epochs", type=int, default=10, help="Number of training epochs of healthy U-Net (only used in 2_anomaly_detection/autoencoder.py)")
 
     # architecture
     parser.add_argument("--img_size", type=int, default=224, help="Spatial size of training images")
