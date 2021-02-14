@@ -1,0 +1,566 @@
+%% bare_conf.tex
+%% V1.4b
+%% 2015/08/26
+%% by Michael Shell
+%% See:
+%% http://www.michaelshell.org/
+%% for current contact information.
+%%
+%% This is a skeleton file demonstrating the use of IEEEtran.cls
+%% (requires IEEEtran.cls version 1.8b or later) with an IEEE
+%% conference paper.
+%%
+%% Support sites:
+%% http://www.michaelshell.org/tex/ieeetran/
+%% http://www.ctan.org/pkg/ieeetran
+%% and
+%% http://www.ieee.org/
+
+%%*************************************************************************
+%% Legal Notice:
+%% This code is offered as-is without any warranty either expressed or
+%% implied; without even the implied warranty of MERCHANTABILITY or
+%% FITNESS FOR A PARTICULAR PURPOSE! 
+%% User assumes all risk.
+%% In no event shall the IEEE or any contributor to this code be liable for
+%% any damages or losses, including, but not limited to, incidental,
+%% consequential, or any other damages, resulting from the use or misuse
+%% of any information contained here.
+%%
+%% All comments are the opinions of their respective authors and are not
+%% necessarily endorsed by the IEEE.
+%%
+%% This work is distributed under the LaTeX Project Public License (LPPL)
+%% ( http://www.latex-project.org/ ) version 1.3, and may be freely used,
+%% distributed and modified. A copy of the LPPL, version 1.3, is included
+%% in the base LaTeX documentation of all distributions of LaTeX released
+%% 2003/12/01 or later.
+%% Retain all contribution notices and credits.
+%% ** Modified files should be clearly indicated as such, including  **
+%% ** renaming them and changing author support contact information. **
+%%*************************************************************************
+
+
+% *** Authors should verify (and, if needed, correct) their LaTeX system  ***
+% *** with the testflow diagnostic prior to trusting their LaTeX platform ***
+% *** with production work. The IEEE's font choices and paper sizes can   ***
+% *** trigger bugs that do not appear when using other class files.       ***                          ***
+% The testflow support page is at:
+% http://www.michaelshell.org/tex/testflow/
+
+
+
+\documentclass[conference]{IEEEtran}
+% Some Computer Society conferences also require the compsoc mode option,
+% but others use the standard conference format.
+%
+% If IEEEtran.cls has not been installed into the LaTeX system files,
+% manually specify the path to it like:
+% \documentclass[conference]{../sty/IEEEtran}
+
+
+
+
+
+% Some very useful LaTeX packages include:
+% (uncomment the ones you want to load)
+
+
+% *** MISC UTILITY PACKAGES ***
+%
+%\usepackage{ifpdf}
+% Heiko Oberdiek's ifpdf.sty is very useful if you need conditional
+% compilation based on whether the output is pdf or dvi.
+% usage:
+% \ifpdf
+%   % pdf code
+% \else
+%   % dvi code
+% \fi
+% The latest version of ifpdf.sty can be obtained from:
+% http://www.ctan.org/pkg/ifpdf
+% Also, note that IEEEtran.cls V1.7 and later provides a builtin
+% \ifCLASSINFOpdf conditional that works the same way.
+% When switching from latex to pdflatex and vice-versa, the compiler may
+% have to be run twice to clear warning/error messages.
+
+
+
+
+
+
+
+
+
+
+
+
+
+% *** MATH PACKAGES ***
+%
+\usepackage{amsmath}
+% A popular package from the American Mathematical Society that provides
+% many useful and powerful commands for dealing with mathematics.
+%
+% Note that the amsmath package sets \interdisplaylinepenalty to 10000
+% thus preventing page breaks from occurring within multiline equations. Use:
+%\interdisplaylinepenalty=2500
+% after loading amsmath to restore such page breaks as IEEEtran.cls normally
+% does. amsmath.sty is already installed on most LaTeX systems. The latest
+% version and documentation can be obtained at:
+% http://www.ctan.org/pkg/amsmath
+
+
+
+
+
+% *** SPECIALIZED LIST PACKAGES ***
+%
+%\usepackage{algorithmic}
+% algorithmic.sty was written by Peter Williams and Rogerio Brito.
+% This package provides an algorithmic environment fo describing algorithms.
+% You can use the algorithmic environment in-text or within a figure
+% environment to provide for a floating algorithm. Do NOT use the algorithm
+% floating environment provided by algorithm.sty (by the same authors) or
+% algorithm2e.sty (by Christophe Fiorio) as the IEEE does not use dedicated
+% algorithm float types and packages that provide these will not provide
+% correct IEEE style captions. The latest version and documentation of
+% algorithmic.sty can be obtained at:
+% http://www.ctan.org/pkg/algorithms
+% Also of interest may be the (relatively newer and more customizable)
+% algorithmicx.sty package by Szasz Janos:
+% http://www.ctan.org/pkg/algorithmicx
+
+
+
+
+% *** ALIGNMENT PACKAGES ***
+%
+%\usepackage{array}
+% Frank Mittelbach's and David Carlisle's array.sty patches and improves
+% the standard LaTeX2e array and tabular environments to provide better
+% appearance and additional user controls. As the default LaTeX2e table
+% generation code is lacking to the point of almost being broken with
+% respect to the quality of the end results, all users are strongly
+% advised to use an enhanced (at the very least that provided by array.sty)
+% set of table tools. array.sty is already installed on most systems. The
+% latest version and documentation can be obtained at:
+% http://www.ctan.org/pkg/array
+
+
+% IEEEtran contains the IEEEeqnarray family of commands that can be used to
+% generate multiline equations as well as matrices, tables, etc., of high
+% quality.
+
+
+
+
+% *** SUBFIGURE PACKAGES ***
+%\ifCLASSOPTIONcompsoc
+%  \usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+%\else
+%  \usepackage[caption=false,font=footnotesize]{subfig}
+%\fi
+% subfig.sty, written by Steven Douglas Cochran, is the modern replacement
+% for subfigure.sty, the latter of which is no longer maintained and is
+% incompatible with some LaTeX packages including fixltx2e. However,
+% subfig.sty requires and automatically loads Axel Sommerfeldt's caption.sty
+% which will override IEEEtran.cls' handling of captions and this will result
+% in non-IEEE style figure/table captions. To prevent this problem, be sure
+% and invoke subfig.sty's "caption=false" package option (available since
+% subfig.sty version 1.3, 2005/06/28) as this is will preserve IEEEtran.cls
+% handling of captions.
+% Note that the Computer Society format requires a larger sans serif font
+% than the serif footnote size font used in traditional IEEE formatting
+% and thus the need to invoke different subfig.sty package options depending
+% on whether compsoc mode has been enabled.
+%
+% The latest version and documentation of subfig.sty can be obtained at:
+% http://www.ctan.org/pkg/subfig
+
+
+
+
+% *** FLOAT PACKAGES ***
+%
+%\usepackage{fixltx2e}
+% fixltx2e, the successor to the earlier fix2col.sty, was written by
+% Frank Mittelbach and David Carlisle. This package corrects a few problems
+% in the LaTeX2e kernel, the most notable of which is that in current
+% LaTeX2e releases, the ordering of single and double column floats is not
+% guaranteed to be preserved. Thus, an unpatched LaTeX2e can allow a
+% single column figure to be placed prior to an earlier double column
+% figure.
+% Be aware that LaTeX2e kernels dated 2015 and later have fixltx2e.sty's
+% corrections already built into the system in which case a warning will
+% be issued if an attempt is made to load fixltx2e.sty as it is no longer
+% needed.
+% The latest version and documentation can be found at:
+% http://www.ctan.org/pkg/fixltx2e
+
+
+%\usepackage{stfloats}
+% stfloats.sty was written by Sigitas Tolusis. This package gives LaTeX2e
+% the ability to do double column floats at the bottom of the page as well
+% as the top. (e.g., "\begin{figure*}[!b]" is not normally possible in
+% LaTeX2e). It also provides a command:
+%\fnbelowfloat
+% to enable the placement of footnotes below bottom floats (the standard
+% LaTeX2e kernel puts them above bottom floats). This is an invasive package
+% which rewrites many portions of the LaTeX2e float routines. It may not work
+% with other packages that modify the LaTeX2e float routines. The latest
+% version and documentation can be obtained at:
+% http://www.ctan.org/pkg/stfloats
+% Do not use the stfloats baselinefloat ability as the IEEE does not allow
+% \baselineskip to stretch. Authors submitting work to the IEEE should note
+% that the IEEE rarely uses double column equations and that authors should try
+% to avoid such use. Do not be tempted to use the cuted.sty or midfloat.sty
+% packages (also by Sigitas Tolusis) as the IEEE does not format its papers in
+% such ways.
+% Do not attempt to use stfloats with fixltx2e as they are incompatible.
+% Instead, use Morten Hogholm'a dblfloatfix which combines the features
+% of both fixltx2e and stfloats:
+%
+% \usepackage{dblfloatfix}
+% The latest version can be found at:
+% http://www.ctan.org/pkg/dblfloatfix
+
+
+
+\usepackage[pdftex]{graphicx}
+\usepackage{gensymb}
+\usepackage{biblatex}
+\addbibresource{bibliography.bib}
+\usepackage{hyperref}
+\usepackage{url}
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+\begin{document}
+%
+% paper title
+% Titles are generally capitalized except for words such as a, an, and, as,
+% at, but, by, for, in, nor, of, on, or, the, to and up, which are usually
+% not capitalized unless they are the first or last word of the title.
+% Linebreaks \\ can be used within to get better formatting as desired.
+% Do not put math or special symbols in the title.
+\title{\Large \bf COVID-19 Detection from Chest Radiography Images: \\A Comparison of Deep Learning Algorithms}
+
+
+% author names and affiliations
+% use a multiple column layout for up to three different
+% affiliations
+\author{
+\IEEEauthorblockN{Li Nguyen, ID: 934644485}
+\IEEEauthorblockA{Department of Informatics\\Technical University of Munich\\
+li.nguyen@tum.de}
+
+\and
+\IEEEauthorblockN{Alexander Koenig, ID: 918254061}
+\IEEEauthorblockA{Department of Informatics\\Technical University of Munich\\
+awc.koenig@tum.de}
+}
+
+% conference papers do not typically use \thanks and this command
+% is locked out in conference mode. If really needed, such as for
+% the acknowledgment of grants, issue a \IEEEoverridecommandlockouts
+% after \documentclass
+
+% for over three affiliations, or if they all won't fit within the width
+% of the page, use this alternative format:
+% 
+%\author{\IEEEauthorblockN{Michael Shell\IEEEauthorrefmark{1},
+%Homer Simpson\IEEEauthorrefmark{2},
+%James Kirk\IEEEauthorrefmark{3}, 
+%Montgomery Scott\IEEEauthorrefmark{3} and
+%Eldon Tyrell\IEEEauthorrefmark{4}}
+%\IEEEauthorblockA{\IEEEauthorrefmark{1}School of Electrical and Computer Engineering\\
+%Georgia Institute of Technology,
+%Atlanta, Georgia 30332--0250\\ Email: see http://www.michaelshell.org/contact.html}
+%\IEEEauthorblockA{\IEEEauthorrefmark{2}Twentieth Century Fox, Springfield, USA\\
+%Email: homer@thesimpsons.com}
+%\IEEEauthorblockA{\IEEEauthorrefmark{3}Starfleet Academy, San Francisco, California 96678-2391\\
+%Telephone: (800) 555--1212, Fax: (888) 555--1212}
+%\IEEEauthorblockA{\IEEEauthorrefmark{4}Tyrell Inc., 123 Replicant Street, Los Angeles, California 90210--4321}}
+
+
+
+
+% use for special paper notices
+%\IEEEspecialpapernotice{(Invited Paper)}
+
+
+
+
+% make the title area
+\maketitle
+
+% As a general rule, do not put math, special symbols or citations
+% in the abstract
+\begin{abstract}
+The ongoing COVID-19 pandemic challenges the world to treat and reduce the growing number of daily infections. Effectively cutting off transmission routes requires broad testing. Methods using chest X-ray images and deep learning methods could help to satisfy this growing demand for rapid testing. This work compares three deep learning approaches for classifying chest radiography images into the categories "normal", "pneumonia" and "COVID-19 pneumonia". Our first method performs transfer learning with a pre-trained ResNet-50. Further, we propose a model that relies on anomaly detection with the U-Net architecture and a ResNet-50 classifier. Our third approach is based on multitask learning where a modified U-Net performs a reconstruction task and a classification task simultaneously. We obtain the best results from the multitask learning method (average sensitivity of 80.0\% and average precision of 81.6\%). The code repository of this project can be accessed via \url{https://github.com/axkoenig/dl4mi}
+\end{abstract}
+
+Keywords: COVID-19 Detection, Chest X-ray, Deep Learning, U-Net, Autoencoder, Anomaly Detection, Transfer Learning, Multitask Learning
+
+% For peer review papers, you can put extra information on the cover
+% page as needed:
+% \ifCLASSOPTIONpeerreview
+% \begin{center} \bfseries EDICS Category: 3-BBND \end{center}
+% \fi
+%
+% For peerreview papers, this IEEEtran command inserts a page break and
+% creates the second title. It will be ignored for other modes.
+\IEEEpeerreviewmaketitle
+
+
+\label{chap1_introduction}
+\section{Introduction}
+
+The COVID-19 pandemic puts countries' medical systems under challenging pressure, not only due to the number of available intensive care beds and respirators but also due to the speed at which the population can be tested. The faster the testing can occur the faster virus transmission routes can be cut off \cite{salathe2020covid}. Currently, the diagnosis is based on Polymerase Chain Reaction (PCR), which is a time-consuming process. Moreover, test capacities for PCR are sometimes still too low to test a large number of people. Especially under the essential need to correctly diagnose the infection to cut off transmission routes, analyzing X-ray images can help in further solidifying the diagnosis. 
+
+Radiologists found that X-ray images show ground-glass opacity as a COVID-19-specific visual indicator for an infection \cite{kong2020chest}. By leveraging deep learning methods for analyzing and visualizing these visual indicators we aim to support the clinical process of diagnosing COVID-19. In comparison to equipment of PCR tests, X-ray machines are more frequently available in hospitals and even smaller medical practices. Due to ethical concerns and laws, a diagnosis completely based on a deep learning model will not be possible shortly. However, these models can help to visualize the infected lung tissues and even estimate the progress state of the disease via a severity scoring \cite{warren2018severity}. In this project, we focus on developing deep learning models that can classify chest X-ray images as healthy, non-COVID pneumonia, or COVID-19 infection.
+
+This report is structured as follows: section  \ref{chap2_related_work} gives an overview of previous work done in the area of deep learning for diagnosing COVID-19 which is grouped into the types of approaches the research groups used. In section \ref{chap3_methods} we present our network architectures and we evaluate the results in chapter \ref{chap4_results}. We provide a critical discussion of the results in chapter \ref{chap5_discussion}. Lastly, we conclude and give ideas on future work in section  \ref{chap6_conclusion}.
+
+\label{chap2_related_work}
+\section{Related Work}
+
+Researchers put a strong effort into understanding the disease better to cope with its spread. The artificial intelligence research community has leveraged machine and deep learning methods to aid the diagnosis of COVID-19. There are approaches using CT Images \cite{li2020artificial} \cite{shan2020lung} \cite{gozes2020rapid} \cite{wang2020deep} \cite{song2020deep} \cite{huang2020serial} \cite{butt2020deep} and ones that use X-ray images for classification, see Figure \ref{fig:related_work}. X-ray machines are more widely distributed in both hospitals and smaller practices and since our project uses X-ray images we are not going into detail about approaches using CT images. 
+Most of the related projects use a type of CNN architecture \cite{wang2020covid}  \cite{narin2020automatic} \cite{sharma2020covid} \cite{abbas2020classification} \cite{hemdan2020covidx} \cite{ghoshal2020estimating} \cite{hall2020finding} and \cite{farooq2020covid}. The convolutional neural network (CNN) approaches get a good accuracy for classifying into healthy, non-COVID and COVID classes. However, any of them do not provide a sophisticated visualization that helps to support the radiologists' diagnosis.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\linewidth]{figures/related_work.png}
+	\caption{Overview of related work}
+	\label{fig:related_work}
+\end{figure}
+
+\subsection{COVID-Net by Wang et al.}
+
+The earliest and most prominent work at the moment is the COVID-Net by Wang et al. \cite{wang2020covid} who proposed the first version of this COVID-19 detection network in only 7 days. Their "generative synthesis" approach generates several architectures and compares them on a test set. The best performing neural network is characterized by selective long-range connectivity and densely-connected layers. An architectural advantage of the synthesized COVID-Net is that it contains intermediate layers that act as central hubs and compensate computational complexity and memory consumption of classical densely-connected architectures. Furthermore, they assembled the COVIDx dataset which is currently the biggest and most broadly used baseline dataset. Several other research groups have tested their models on the COVIDx \cite{hemdan2020covidx} \cite{farooq2020covid} \cite{khobahi2020coronet}. The dataset by J. Cohen \cite{cohen2020covid} which is one of the largest COVID-19 chest X-ray image collections is one of the building blocks of COVIDx.
+
+\subsection{Combining CNNs and SVM}
+An approach which differs slightly from the other CNN-based approaches is the one of Sethy et al. They compare the performance of different CNN architectures combined with a support vector machine (SVM) classifier \cite{sethy2020detection}. The features of a deep layer are extracted and fed to the SVM classifier. They compare the following architectures: AlexNet, DenseNet201, GoogLeNet, InceptionV3, ResNet18, ResNet50, ResNet101 VGG16, VGG19, XceptionNet and InceptionResNetV2. The ResNet50 outperforms the other models with an accuracy of 95.38\% and a specificity of 93.47\%. They combined the dataset of Cohen et al. \cite{cohen2020covid} and the Kaggle Pneumonia Dataset \cite{kaggle2019pneumonia}.
+
+\subsection{Anomaly Detection}
+Zhang et al. \cite{zhang2020viral} focus on differentiating viral pneumonia from non-viral pneumonia and healthy lungs and formulate this as a one-class classification-based anomaly detection. Their anomaly detection model consists of a shared feature extractor, an anomaly detection module, and a confidence prediction model. An X-ray image then counts as an outlier if it lies above a defined anomaly score. The advantage of this approach is that all known diseases are treated as one class and detected outliers can either be COVID-19 or a harbinger for newly arising diseases. They use an in-house dataset combined from the X-VIRAL and the X-COVID dataset which are collected from 6 institutions and consist of 106 COVID-19 and 107 normal cases. The highest accuracy they achieve is 80.65\% and the highest specificity is 79.87\%.
+
+Khobani et al. \cite{khobahi2020coronet} use autoencoders to encode the latent representation of healthy and non-COVID pneumonia. For the classification of an X-ray image at hand, the sample is fed through both autoencoders. Ideally, only the healthy and non-COVID specific features are reconstructed. They build a residual tensor from the two reconstructed images which is then fed into a ResNet18 classifier. This allows them to exploit the limited available data of COVID-19 and also provides tools that can explain the diagnosis. They reach an accuracy of 93.50\% and a precision of 93.63\%.
+
+\subsection{Capsule Networks}
+Afshar et al. \cite{afshar2020covid} leverage capsule networks that were first proposed by Sabour et al. \cite{sabour2017dynamic}. The advantage of capsule networks is that spatial information such as object pose and orientation is preserved better than in CNNs. Furthermore, CNNs require larger datasets and a higher number of training parameters than capsule networks. Furthermore, Afshar et al. apply the concept of transfer learning by using images of the same domain. In comparison to pre-training on natural images, they were able to improve their accuracy from initially 95.7\% to 98.3\% and their specificity from 95.8\% to 98.6\%. Wang et al. for example performed transfer learning using natural images from ImageNet \cite{wang2020covid} \cite{deng2009imagenet}.
+
+Generally, all existing projects deal with the problem of an unbalanced dataset since COVID-19 is a newly emerging disease and data has yet to be collected. There are plenty of X-ray images of non-COVID pneumonia and healthy subjects. Most of the CNN-based projects deal with the unbalanced dataset by over- or undersampling or a weighted loss function. The last approach of Khobani et al. tackles this issue architecturally: at an initial stage one autoencoder is trained for the healthy and non-COVID pneumonia images each. In a second stage all images (i.e. healthy, pneumonia and COVID-19) are processed by a second classifier module which uses the autoencoders trained in the first stage.
+
+\label{chap3_data}
+\section{Dataset}
+We use the COVIDx3 dataset of Wang et al. \cite{wang2020covid} which is comprised of the following openly accessible datasets.
+\begin{enumerate}
+    \item COVID-19 Image Data Collection by Cohen et al. \cite{cohen2020covid}
+    \item Figure 1 COVID-19 Chest X-ray Dataset Initiative \cite{chung2020figure}
+    \item RSNA Pneumonia Detection Challenge dataset \cite{kaggle2019pneumonia}
+    \item ActualMed COVID-19 Chest X-ray Dataset Initiative \cite{chung2019covid}
+    \item COVID-19 radiography database \cite{kaggle2019covid}
+\end{enumerate}
+
+The COVIDx3 dataset is unbalanced. The training set constists of only 253 COVID-19 cases, while there are 7,966 healthy cases and 5,451 non-COVID pneumonia images. The test set consists of 300 samples (i.e. 100 samples for each class). It is important to note that only train and test sets but no validation set are provided. Figure \ref{fig:classes} shows samples images from the dataset.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\linewidth]{figures/classes.png}
+	\caption{Goal: discriminate between the three classes}
+	\label{fig:classes}
+\end{figure}
+
+\label{chap3_methods}
+\section{Methods}
+\subsection{ResNet-50 Baseline Classifier\label{resnet_baseline}}
+
+The first approach is motivated by the recent success of transfer learning. Transfer learning refers to the process of using a pre-trained neural network and fine-tuning its parameters to a specific task. We use the ResNet-50 architecture \cite{he2015deep} which was pre-trained on 1000 classes from the ImageNet dataset \cite{deng2009imagenet}. The network hereby learned to extract low-level features such as patterns and shapes in its first layers. As shown in figure \ref{fig:resnet} we use these first layers of the ResNet-50 as a pattern extractor. We keep all of its parameters fixed and replace the last layer with our own fully connected layer, which maps to three classes (i.e. "Normal", "Pneumonia", "COVID-19") instead of the original 1000 classes. Therefore, the high-level features in the last layer that are specific to the ImageNet dataset are discarded.
+
+This approach serves as a baseline for comparison to the other two algorithms. With this baseline classifier $f_\theta$ we also evaluate which approach handles the imbalance of the COVIDx dataset the best. Our experiments showed that weighting the loss function provided slightly better results than oversampling the under-represented classes. Consequently, we choose the weighted cross-entropy function in equation \ref{eq:cross_entropy} as our classification loss $\mathcal{L}_{c}$. Higher weights $w_i$ are given to samples that occur less often in the dataset. To ensure comparability, the classification loss is the same for all presented approaches unless stated otherwise.
+
+\begin{equation}
+	\mathcal{L}_{c} = \frac{1}{N} \sum_{n=1}^{N}w_i \mathbf{y_i} \log(f_\theta(\mathbf{X_i}))
+	\label{eq:cross_entropy}
+\end{equation}
+
+\begin{figure*}
+	\centering
+	\includegraphics[width=0.75\textwidth]{figures/resnet.png}
+	\caption{Architecture of ResNet-50 Baseline Classifier}
+	\label{fig:resnet}
+\end{figure*}
+
+\subsection{Anomaly Detection with U-Net}
+
+The second approach is based on anomaly detection using deep autoencoders. Such approaches provided good results in tasks such as lesion segmentation in brain magnetic resonance images \cite{Baur_2019}. Due to its recent successes we chose the U-Net \cite{ronneberger2015unet} autoencoder and used an implementation from the work by Buda et al. \cite{buda2019association} which was originally used for abnormality segmentation in brain MRI. We slightly modified the network to output three channels instead of one since we want to reconstruct a full image instead of a binary segmentation map. The training of our method follows a two-step approach.
+
+\textbf{Stage 1}: In this stage the autoencoder $g_\theta$ is trained to reconstruct non-anomalous data (i.e. healthy chest radiography images) by minimizing the reconstruction loss in equation \ref{eq:reconstruction}. The network specializes in the task of reconstructing healthy chest radiography images in a fully unsupervised manner. 
+
+\begin{equation}
+	\mathcal{L}_{r} = \frac{1}{N} \sum_{n=1}^{N}\big(g_\theta(\mathbf{X_i})- \mathbf{X_i}\big)^2
+	\label{eq:reconstruction}
+\end{equation}
+
+\textbf{Stage 2}: Consequently, the network $g_\theta$ is used to run inference on images of all three classes (i.e. "Normal", "Pneumonia", "COVID-19"). Since the autoencoder was only trained on healthy data it should not be able to reproduce those image features that are specific to the disease. Thereby, the autoencoder produces an image that resembles a healthy image. To isolate the difference between the reconstructed image $g_\theta(\mathbf{X_i}$ and the original image $\mathbf{X_i}$ we subtract the reconstruction from the original to obtain a so-called anomaly map (also see figure \ref{fig:healthy_unet}). We then train a ResNet-50 classifier to discriminate between the three classes based on the anomaly map. The ResNet-50 follows the same architecture as our baseline classifier from section \ref{resnet_baseline} and was also pre-trained on ImageNet. While the parameters of the last layer of the ResNet-50 are trained from scratch on the new classification task, the parameters of the autoencoder $g_\theta$ are left unchanged.
+
+\begin{figure*}
+	\centering
+	\includegraphics[width=0.75\textwidth]{figures/healthy_unet.png}
+	\caption{Architecture of Anomaly Detector}
+	\label{fig:healthy_unet}
+\end{figure*}
+
+\subsection{Multitask Learning}
+
+The third approach for COVID-19 detection is based on multitask learning. The network is guided to solve a reconstruction task and a classification task simultaneously.
+
+We augment U-Net with a classification network that is appended to U-Net's bottleneck (see figure \ref{fig:multitask_unet}). The architecture of the appended network is inspired by the work of Frid-Adar et al. \cite{fridadar2019endotracheal} who used this approach to classify and segment endotracheal tubes in chest radiographies. The appended network consists of an average pooling layer which is used to condense the information in the bottleneck. It is followed by two fully connected layers and a softmax operation which map to the three classes. The overall loss function in equation \ref{eq:multi} is a weighted combination between the classification loss $\mathcal{L}_c$ and the reconstruction loss $\mathcal{L}_r$. This joint optimization of the reconstruction and classification objective is motivated by the idea that both tasks can assist each other by producing more meaningful encodings in the bottleneck. The scaling parameter for the reconstruction loss is $\alpha$ and is experimentally determined. 
+
+\begin{equation}
+	\mathcal{L} = \mathcal{L}_c + \alpha \mathcal{L}_r 
+	\label{eq:multi}
+\end{equation}
+
+\begin{figure*}
+	\centering
+	\includegraphics[width=0.75\textwidth]{figures/multitask_unet.png}
+	\caption{Architecture of Multitask U-Net}
+	\label{fig:multitask_unet}
+\end{figure*}
+
+\subsection{Implementation Details}
+
+The presented methods were implemented in the PyTorch deep learning framework and trained using an NVIDIA Tesla K80 graphics processor. We suspect that other works such as the one by Wang et al. \cite{wang2020covidnet} indirectly overfit to the COVIDx test set. The approach by Wang et al. is based on "generative synthesis" -- a machine-driven design exploration strategy. Wang et al. did not mention validation data in their publication while COVIDx only provides a train and a test set. Therefore, we suspect that hyper-parameter tuning was done on the test set, which suggests that the estimated performance of their approach on unseen data may be too optimistic. To avoid indirectly overfitting on the test set we performed k-fold cross-validation (with $k=10$). All classifiers were trained for 20 epochs in total (2 epochs per fold) with batch size 16. The U-Net in \textit{Stage 1} of the anomaly detection approach was trained for 10 epochs and batch size 16. The Adam optimizer with standard hyperparameters was used (learning rate $s=0.0002$, $\beta_1=0.9$, $\beta_2=0.999$).
+
+Furthermore, the training data was augmented using the following methods in a pre-processing step. 
+\begin{itemize}
+	\item Random horizontal flip with probability $p=0.5$
+	\item Random rotation with range $r=\pm 5 \degree$
+	\item Random crop to [3,224,224] with scale $s \in [0.75, 1.0]$
+	\item Random brightness change with factor $f=0.2$
+	\item Random contrast change with factor $f=0.1$
+\end{itemize}
+
+\label{chap4_results}
+\section{Experimental Results}
+
+The performance of the three approaches on the test set is compared. We show confusion matrices for each approach, where the ground truth results are represented by the rows, and the algorithmic predictions are shown in the columns. Refer to tables \ref{tab:sensitivity} and \ref{tab:precision} to see a direct comparison of the sensitivity and precision of the approaches. 
+
+\subsection{ResNet-50 Baseline Classifier}
+
+The ResNet-50 baseline provides good sensitivity for images that come from the normal and pneumonia class (both 88\%). However, the sensitivity for COVID-19 images is much lower (only 42\%). This comes from the unbalanced dataset which provides much fewer cases for COVID-19.  What should be noted is that the precision of the COVID-19 is very high (i.e. if COVID-19 is predicted it is likely true).
+
+\begin{table}[h]
+\centering
+\caption{Confusion matrix of ResNet-50 baseline classifier}
+\begin{tabular}{|l|c|c|c|}
+\hline
+ & Normal & Pneumonia & COVID-19 \\ \hline
+Normal & 88 & 12 & 0 \\ \hline
+Pneumonia & 11 & 88 & 1 \\ \hline
+COVID-19 & 18 & 40 & 42 \\ \hline
+\end{tabular}
+\label{tab:resnet_conf}
+\end{table}
+
+\subsection{Anomaly Detection with U-Net}
+
+The anomaly classifier provides worse results in the healthy class than the baseline classifier. However, the anomaly maps provide a benefit for the classes the U-Net was not trained on (i.e. 1\% more sensitive for pneumonia images and 16\% more sensitive for COVID-19 images). 
+
+An interesting byproduct of this approach are the anomaly maps. Figure \ref{fig:maps} shows some sample images from all three classes. It can be noted that the anomaly maps highlight any haziness that is present in the original image. The "normal" anomaly maps in the left of figure \ref{fig:maps} show a clear view of both lungs whereas for pneumonia cases the anomaly maps show more hazy patterns across the lungs. For the COVID-19 cases, the anomaly maps highlight the diffuse ground-glass opacity in both lower lobes, which aligns with previous pathological findings \cite{cozzi2020chest}.
+
+\begin{figure*}
+	\centering
+	\includegraphics[width=0.8\textwidth]{figures/maps.png}
+	\caption{Anomaly maps generated for all three classes}
+	\label{fig:maps}
+\end{figure*}
+
+\begin{table}[h]
+\centering
+\caption{Confusion matrix of anomaly detection with U-Net}
+\begin{tabular}{|l|c|c|c|}
+\hline
+ & Normal & Pneumonia & COVID-19 \\ \hline
+Normal & 46 & 47 & 7 \\ \hline
+Pneumonia & 3 & 89 & 8 \\ \hline
+COVID-19 & 7 & 35 & 58 \\ \hline
+\end{tabular}
+\label{tab:anomaly_conf}
+\end{table}
+
+\subsection{Multitask Learning}
+
+The multitask learning approach provided the most promising results of all presented methods (see table \ref{tab:multitask_conf}). The parameter $\alpha=0.5$ performed the best in several experiments. 
+
+\begin{table}[h!]
+\centering
+\caption{Confusion matrix of multitask learning}
+\begin{tabular}{|l|c|c|c|}
+\hline
+ & Normal & Pneumonia & COVID-19 \\ \hline
+Normal & 87 & 11 & 2 \\ \hline
+Pneumonia & 4 & 88 & 8 \\ \hline
+COVID-19 & 7 & 28 & 65 \\ \hline
+\end{tabular}
+\label{tab:multitask_conf}
+\end{table}
+
+\subsection{Comparison}
+
+From table \ref{tab:sensitivity} it becomes clear that the multitask learning approach provided the highest sensitivity on the test set on average. For the normal and the pneumonia class the multitask learning method was not the most sensitive, although the sensitivity difference to the best performing method is only 1\% each. It should be noted, that for the COVID-19 class the multitask learning approach outperformed the other approaches by a large margin. Furthermore, multitask learning also provides the best average precision while only being outperformed by the baseline classifier in the COVID-19 class.
+
+In general, it is unsurprising that the performance of all approaches for the COVID-19 class is significantly worse than for the normal and the pneumonia class. This is due to the severe lack of data in the COVID-19 class. Interestingly, we obtain high average precision scores for COVID-19 images, but less so in the pneumonia class.  
+
+\begin{table}[]
+\centering
+\caption{Average and class sensitivity of approaches (in \%)}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+ & Normal & Pneumonia & COVID-19 & Average \\ \hline
+ResNet-50 & \textbf{88.0} & 88.0 & 42.0 & 72.7 \\ \hline
+Anomaly & 46.0 & \textbf{89.0} & 58.0 & 64.3 \\ \hline
+Multitask & 87.0 & 88.0 & \textbf{65.0} & \textbf{80.0} \\ \hline
+\end{tabular}
+\label{tab:sensitivity}
+\end{table}
+
+\begin{table}[]
+\centering
+\caption{Average and class precision of approaches (in \%)}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+ & Normal & Pneumonia & COVID-19 & Average \\ \hline
+ResNet-50 & 75.2 & 62.9 & \textbf{97.7} & 78.6 \\ \hline
+Anomaly & 82.1 & 52.0 & 79.5 & 71.2 \\ \hline
+Multitask & \textbf{88.8} & \textbf{69.3} & 86.7 & \textbf{81.6} \\ \hline
+\end{tabular}
+
+\label{tab:precision}
+\end{table}
+
+\label{chap5_discussion}
+\section{Discussion and Outlook}
+
+One of the main challenges we addressed in this project was handling the imbalance of the dataset. We pre-processed the data using data augmentation, used a weighted loss function, and trained the models using cross-validation. Furthermore, we reduced dependency on COVID-19 images by using an autoencoder as an architectural building block of the anomaly detection approach. We verified that ResNet-50 is a good baseline model and compared different approaches with each other. We believe the multitask learning approach has a lot of potential for future development.
+
+In future work, we would like to combine the weighted loss function with over- or undersampling. Furthermore, to deal with the unbalanced data other loss functions could be used, e.g. the cosine loss by Barz et al. \cite{barz2020deep} or the perceptual loss by Johnson et al. \cite{johnson2016perceptual}.
+
+The project can further be extended by augmenting the original X-ray scans with an overlay that highlights the affected areas of the lungs. This could either be done by using Grad Gam by Selvaraju et al. \cite{selvaraju2017grad} or by using the anomaly maps we presented in figure \ref{fig:maps}. It could be observed that the anomaly maps created for COVID-19 cases show more dense patterns in the lower lobes, while non-COVID pneumonia shows an overall haziness and healthy lungs are mostly clear. By overlaying colored anomaly maps onto the original X-ray scan a visualization tool for radiologists could be created. However, it should be investigated in cooperation with medical experts if the anomaly maps obtained from our second method are medically meaningful.
+A sanity check for the anomaly detection method should be performed by calculating the pixel-wise distance between the original and the reconstruction of healthy X-ray scans and sick images. If our assumption is correct, the average distance of healthy scans to their reconstruction should be much lower than the ones of sick scans, since the autoencoder is trained solely on healthy images and should be less good in reconstructing sick samples.
+The anomaly detection approach can further be extended as an early warning system when trained on all existing lung diseases. Outliers can be detected and further scrutinized to see newly arising diseases earlier.
+
+\label{chap6_conclusion}
+\section{Conclusion}
+
+Our approach focuses on COVID-19 detection using Chest X-ray images and leverages the methods of deep learning. A big challenge is the imbalance of the dataset because only a few COVID-19 X-ray scans are available due to the novelty of the disease in comparison to other known pneumonia and healthy X-ray scans. To deal with this issue we try alternative architectures compared to other research groups that often implement classical CNNs. 
+In our work, we compare three different approaches with each other of which two use an autoencoder. We found that the last architecture using multitask learning works best. However, for pure classification into COVID-19, non-COVID pneumonia, and healthy cases this does not outperform the state of the art classification task. On the other hand, our approaches bring other notable advantages such as visualization in the form of anomaly maps.
+
+\section*{Acknowledgment}
+The authors would like to thank Dana and Hayit for their ongoing support during the Deep Learning in Medical Imaging lecture at Tel Aviv University. We hope to stay in touch in the future and extend this project further in collaboration with you.
+
+\printbibliography
+
+\end{document}

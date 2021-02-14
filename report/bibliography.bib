@@ -1,0 +1,345 @@
+%%%%%%%%% Introduction %%%%%%%%%
+
+% proof for ground glass opacity being a visual indicator of COVID-19
+@article{kong2020chest,
+  title={Chest imaging appearance of COVID-19 infection},
+  author={Kong, Weifang and Agarwal, Prachi P},
+  journal={Radiology: Cardiothoracic Imaging},
+  volume={2},
+  number={1},
+  pages={e200028},
+  year={2020},
+  publisher={Radiological Society of North America}
+}
+
+% severity scoring
+@article{warren2018severity,
+  title={Severity scoring of lung oedema on the chest radiograph is associated with clinical outcomes in ARDS},
+  author={Warren, Melissa A and Zhao, Zhiguou and Koyama, Tatsuki and Bastarache, Julie A and Shaver, Ciara M and Semler, Matthew W and Rice, Todd W and Matthay, Michael A and Calfee, Carolyn S and Ware, Lorraine B},
+  journal={Thorax},
+  volume={73},
+  number={9},
+  pages={840--846},
+  year={2018},
+  publisher={BMJ Publishing Group Ltd}
+}
+
+% on the importance of testing
+@article{salathe2020covid,
+  title={COVID-19 epidemic in Switzerland: on the importance of testing, contact tracing and isolation.},
+  author={Salath{\'e}, Marcel and Althaus, Christian L and Neher, Richard and Stringhini, Silvia and Hodcroft, Emma and Fellay, Jacques and Zwahlen, Marcel and Senti, Gabriela and Battegay, Manuel and Wilder-Smith, Annelies and others},
+  journal={Swiss medical weekly},
+  volume={150},
+  number={11-12},
+  pages={w20225},
+  year={2020},
+  publisher={EMH Swiss Medical Publishers, Ltd.}
+}
+
+% cosine loss
+@inproceedings{barz2020deep,
+  title={Deep learning on small datasets without pre-training using cosine loss},
+  author={Barz, Bjorn and Denzler, Joachim},
+  booktitle={The IEEE Winter Conference on Applications of Computer Vision},
+  pages={1371--1380},
+  year={2020}
+}
+
+% perceptual loss
+@inproceedings{johnson2016perceptual,
+  title={Perceptual losses for real-time style transfer and super-resolution},
+  author={Johnson, Justin and Alahi, Alexandre and Fei-Fei, Li},
+  booktitle={European conference on computer vision},
+  pages={694--711},
+  year={2016},
+  organization={Springer}
+}
+
+% GRAD CAM
+@inproceedings{selvaraju2017grad,
+  title={Grad-cam: Visual explanations from deep networks via gradient-based localization},
+  author={Selvaraju, Ramprasaath R and Cogswell, Michael and Das, Abhishek and Vedantam, Ramakrishna and Parikh, Devi and Batra, Dhruv},
+  booktitle={Proceedings of the IEEE international conference on computer vision},
+  pages={618--626},
+  year={2017}
+}
+
+
+%%%%%%%% Datasets %%%%%%%%
+% Cohen Dataset 
+@article{cohen2020covid,
+  title={Covid-19 image data collection: Prospective predictions are the future},
+  author={Cohen, Joseph Paul and Morrison, Paul and Dao, Lan and Roth, Karsten and Duong, Tim Q and Ghassemi, Marzyeh},
+  journal={arXiv preprint arXiv:2006.11988},
+  year={2020}
+}
+
+% Chung dataset
+@misc{chung2020figure,
+  title={Figure 1 COVID-19 chest x-ray data initiative},
+  author={Chung, A},
+  year={2020}
+}
+
+% kaggle dataset
+
+@manual{kaggle2019pneumonia,
+  title  = "Radiological Society of North America. RSNA  pneumonia detection challenge",
+  author = "Kaggle",
+  url    = "https://www.kaggle.com/c/rsna-pneumonia-detection-challenge/data",
+  year   = "2019"
+}
+
+% kaggle covid dataset
+@manual{kaggle2019covid,
+  title  = "COVID-19 radiography database",
+  author = "Kaggle",
+  url    = "https://www.kaggle.com/tawsifurrahman/covid19-radiography-database",
+  year   = "2020"
+}
+
+% chung second covid dataset
+@manual{chung2019covid,
+  title  = "Actualmed COVID-19 chest x-ray data initiative",
+  author = "Chung et al.",
+  url    = "https://github.com/agchung/Actualmed-COVID-chestxray-dataset",
+  year   = "2020"
+}
+
+
+
+%%%%%%%%% Related Work %%%%%%%%%
+%%%%% Approaches based on CT Images %%%%%%
+@article{shan2020lung,
+  title={Lung infection quantification of covid-19 in ct images with deep learning},
+  author={Shan, Fei and Gao, Yaozong and Wang, Jun and Shi, Weiya and Shi, Nannan and Han, Miaofei and Xue, Zhong and Shi, Yuxin},
+  journal={arXiv preprint arXiv:2003.04655},
+  year={2020}
+}
+
+@article{li2020artificial,
+  title={Artificial intelligence distinguishes COVID-19 from community acquired pneumonia on chest CT},
+  author={Li, Lin and Qin, Lixin and Xu, Zeguo and Yin, Youbing and Wang, Xin and Kong, Bin and Bai, Junjie and Lu, Yi and Fang, Zhenghan and Song, Qi and others},
+  journal={Radiology},
+  year={2020},
+  publisher={Radiological Society of North America}
+}
+
+@article{gozes2020rapid,
+  title={Rapid ai development cycle for the coronavirus (covid-19) pandemic: Initial results for automated detection \& patient monitoring using deep learning ct image analysis},
+  author={Gozes, Ophir and Frid-Adar, Maayan and Greenspan, Hayit and Browning, Patrick D and Zhang, Huangqi and Ji, Wenbin and Bernheim, Adam and Siegel, Eliot},
+  journal={arXiv preprint arXiv:2003.05037},
+  year={2020}
+}
+
+@article{wang2020deep,
+  title={A deep learning algorithm using CT images to screen for Corona Virus Disease (COVID-19)},
+  author={Wang, Shuai and Kang, Bo and Ma, Jinlu and Zeng, Xianjun and Xiao, Mingming and Guo, Jia and Cai, Mengjiao and Yang, Jingyi and Li, Yaodong and Meng, Xiangfei and others},
+  journal={MedRxiv},
+  year={2020},
+  publisher={Cold Spring Harbor Laboratory Press}
+}
+
+@article{song2020deep,
+  title={Deep learning enables accurate diagnosis of novel coronavirus (COVID-19) with CT images},
+  author={Song, Ying and Zheng, Shuangjia and Li, Liang and Zhang, Xiang and Zhang, Xiaodong and Huang, Ziwang and Chen, Jianwen and Zhao, Huiying and Jie, Yusheng and Wang, Ruixuan and others},
+  journal={medRxiv},
+  year={2020},
+  publisher={Cold Spring Harbor Laboratory Press}
+}
+
+@article{huang2020serial,
+  title={Serial quantitative chest ct assessment of covid-19: Deep-learning approach},
+  author={Huang, Lu and Han, Rui and Ai, Tao and Yu, Pengxin and Kang, Han and Tao, Qian and Xia, Liming},
+  journal={Radiology: Cardiothoracic Imaging},
+  volume={2},
+  number={2},
+  pages={e200075},
+  year={2020},
+  publisher={Radiological Society of North America}
+}
+
+@article{butt2020deep,
+  title={Deep learning system to screen coronavirus disease 2019 pneumonia},
+  author={Butt, Charmaine and Gill, Jagpal and Chun, David and Babu, Benson A},
+  journal={Applied Intelligence},
+  pages={1},
+  year={2020},
+  publisher={Springer}
+}
+
+%%%%% Approaches based on X-Ray Images %%%%%%
+
+@article{wang2020covid,
+  title={COVID-Net: A Tailored Deep Convolutional Neural Network Design for Detection of COVID-19 Cases from Chest X-Ray Images},
+  author={Wang, Linda and Wong, Alexander},
+  journal={arXiv preprint arXiv:2003.09871},
+  year={2020}
+}
+
+@article{khobahi2020coronet,
+  title={CoroNet: A Deep Network Architecture for Semi-Supervised Task-Based Identification of COVID-19 from Chest X-ray Images},
+  author={Khobahi, Shahin and Agarwal, Chirag and Soltanalian, Mojtaba},
+  journal={medRxiv},
+  year={2020},
+  publisher={Cold Spring Harbor Laboratory Press}
+}
+
+@article{narin2020automatic,
+  title={Automatic detection of coronavirus disease (covid-19) using x-ray images and deep convolutional neural networks},
+  author={Narin, Ali and Kaya, Ceren and Pamuk, Ziynet},
+  journal={arXiv preprint arXiv:2003.10849},
+  year={2020}
+}
+
+@article{zhang2020viral,
+  title={Viral pneumonia screening on chest X-ray images using confidence-aware anomaly detection},
+  author={Zhang, Jianpeng and Xie, Yutong and Liao, Zhibin and Pang, Guansong and Verjans, Johan and Li, Wenxin and Sun, Zongji and He, Jian and Li, Yi and Shen, Chunhua and others},
+  journal={arXiv: 2003.12338},
+  year={2020}
+}
+
+@article{sharma2020covid,
+  title={COVID-19 detection using Residual Attention Network an Artificial Intelligence approach},
+  author={Sharma, Vishal and Dyreson, Curtis},
+  journal={arXiv preprint arXiv:2006.16106},
+  year={2020}
+}
+
+@article{abbas2020classification,
+  title={Classification of COVID-19 in chest X-ray images using DeTraC deep convolutional neural network},
+  author={Abbas, Asmaa and Abdelsamea, Mohammed M and Gaber, Mohamed Medhat},
+  journal={arXiv preprint arXiv:2003.13815},
+  year={2020}
+}
+
+@article{hemdan2020covidx,
+  title={Covidx-net: A framework of deep learning classifiers to diagnose covid-19 in x-ray images},
+  author={Hemdan, Ezz El-Din and Shouman, Marwa A and Karar, Mohamed Esmail},
+  journal={arXiv preprint arXiv:2003.11055},
+  year={2020}
+}
+
+@article{ghoshal2020estimating,
+  title={Estimating uncertainty and interpretability in deep learning for coronavirus (COVID-19) detection},
+  author={Ghoshal, Biraja and Tucker, Allan},
+  journal={arXiv preprint arXiv:2003.10769},
+  year={2020}
+}
+
+@article{hall2020finding,
+  title={Finding covid-19 from chest x-rays using deep learning on a small dataset},
+  author={Hall, Lawrence O and Paul, Rahul and Goldgof, Dmitry B and Goldgof, Gregory M},
+  journal={arXiv preprint arXiv:2004.02060},
+  year={2020}
+}
+
+@article{sethy2020detection,
+  title={Detection of coronavirus disease (covid-19) based on deep features},
+  author={Sethy, Prabira Kumar and Behera, Santi Kumari},
+  journal={Preprints},
+  volume={2020030300},
+  pages={2020},
+  year={2020}
+}
+
+@article{afshar2020covid,
+  title={Covid-caps: A capsule network-based framework for identification of covid-19 cases from x-ray images},
+  author={Afshar, Parnian and Heidarian, Shahin and Naderkhani, Farnoosh and Oikonomou, Anastasia and Plataniotis, Konstantinos N and Mohammadi, Arash},
+  journal={arXiv preprint arXiv:2004.02696},
+  year={2020}
+}
+
+@article{farooq2020covid,
+  title={Covid-resnet: A deep learning framework for screening of covid19 from radiographs},
+  author={Farooq, Muhammad and Hafeez, Abdul},
+  journal={arXiv preprint arXiv:2003.14395},
+  year={2020}
+}
+
+%%% weitere quellen
+% capsule network original paper
+@inproceedings{sabour2017dynamic,
+  title={Dynamic routing between capsules},
+  author={Sabour, Sara and Frosst, Nicholas and Hinton, Geoffrey E},
+  booktitle={Advances in neural information processing systems},
+  pages={3856--3866},
+  year={2017}
+}
+
+
+
+
+
+
+
+
+@misc{he2015deep,
+    title={Deep Residual Learning for Image Recognition},
+    author={Kaiming He and Xiangyu Zhang and Shaoqing Ren and Jian Sun},
+    year={2015},
+    eprint={1512.03385},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV}
+}
+@inproceedings{deng2009imagenet, 
+  title={ImageNet: A Large-Scale Hierarchical Image Database}, 
+  author={Deng, Jia and Dong, Wei and Socher, Richard and Li, Li-Jia and Li, Kai and Fei-Fei, Li}, 
+  booktitle={2009 IEEE Conference on Computer Vision and Pattern Recognition}, 
+  pages={248--255}, 
+  year={2009}, 
+  organization={IEEE} 
+}
+@article{Baur_2019,
+   title={Deep Autoencoding Models for Unsupervised Anomaly Segmentation in Brain MR Images},
+   ISBN={9783030117238},
+   ISSN={1611-3349},
+   url={http://dx.doi.org/10.1007/978-3-030-11723-8_16},
+   DOI={10.1007/978-3-030-11723-8_16},
+   journal={Lecture Notes in Computer Science},
+   publisher={Springer International Publishing},
+   author={Baur, Christoph and Wiestler, Benedikt and Albarqouni, Shadi and Navab, Nassir},
+   year={2019},
+   pages={161–169}
+}
+@article{buda2019association,
+  title={Association of genomic subtypes of lower-grade gliomas with shape features automatically extracted by a deep learning algorithm},
+  author={Buda, Mateusz and Saha, Ashirbani and Mazurowski, Maciej A},
+  journal={Computers in Biology and Medicine},
+  volume={109},
+  year={2019},
+  publisher={Elsevier},
+  doi={10.1016/j.compbiomed.2019.05.002}
+}
+@misc{ronneberger2015unet,
+    title={U-Net: Convolutional Networks for Biomedical Image Segmentation},
+    author={Olaf Ronneberger and Philipp Fischer and Thomas Brox},
+    year={2015},
+    eprint={1505.04597},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV}
+}
+@article{cozzi2020chest,
+  title={Chest X-ray in new Coronavirus Disease 2019 (COVID-19) infection: findings and correlation with clinical outcome},
+  author={Cozzi, Diletta and Albanesi, Marco and Cavigli, Edoardo and Moroni, Chiara and Bindi, Alessandra and Luvar{\`a}, Silvia and Lucarini, Silvia and Busoni, Simone and Mazzoni, Lorenzo Nicola and Miele, Vittorio},
+  journal={La Radiologia Medica},
+  pages={1},
+  year={2020},
+  publisher={Springer}
+}
+@misc{fridadar2019endotracheal,
+    title={Endotracheal Tube Detection and Segmentation in Chest Radiographs using Synthetic Data},
+    author={Maayan Frid-Adar and Rula Amer and Hayit Greenspan},
+    year={2019},
+    eprint={1908.07170},
+    archivePrefix={arXiv},
+    primaryClass={eess.IV}
+}
+@misc{wang2020covidnet,
+    title={COVID-Net: A Tailored Deep Convolutional Neural Network Design for Detection of COVID-19 Cases from Chest X-Ray Images},
+    author={Linda Wang and Alexander Wong},
+    year={2020},
+    eprint={2003.09871},
+    archivePrefix={arXiv},
+    primaryClass={eess.IV}
+}
