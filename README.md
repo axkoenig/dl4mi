@@ -1,4 +1,4 @@
-# dl4mi
+# COVID-19 Detection from Chest Radiography Images
 
 This work compares three deep learning approaches for COVID-19 detection from chest radiographies. Our first method performs transfer learning with a pre-trained ResNet-50. Further, we propose a model that relies on anomaly detection with the U-Net architecture and a ResNet-50 classifier. Our third approach is based on multitask learning where a modified U-Net performs a reconstruction task and a classification task simultaneously.
 
